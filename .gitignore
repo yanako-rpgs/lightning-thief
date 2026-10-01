@@ -1,0 +1,49 @@
+# Unreal Engine generated folders (rebuilt on compile / editor launch)
+**/Binaries/
+**/Intermediate/
+**/Saved/
+**/DerivedDataCache/
+**/Build/*/**
+!**/Build/*/PakBlacklist*.txt
+
+# Plugin build output
+**/Plugins/**/Binaries/
+**/Plugins/**/Intermediate/
+
+# Generated solution / project files (regenerate via "Generate Visual Studio project files")
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.vs/
+.vscode/
+.idea/
+
+# Compiled objects / binaries
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.app
+*.ipa
+*.pch
+*.gch
+*.so
+*.dylib
+*.modules
+*.target
+
+# Misc
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
