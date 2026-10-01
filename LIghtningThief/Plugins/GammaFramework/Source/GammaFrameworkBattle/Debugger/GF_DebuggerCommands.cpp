@@ -13,7 +13,7 @@
 TWeakPtr<SWindow>              UGF_DebuggerCommands::DebuggerWindow;
 TWeakPtr<SGF_DebuggerWidget>   UGF_DebuggerCommands::DebuggerWidgetRef;
 IConsoleVariable*              UGF_DebuggerCommands::ShowDebuggerCVar = nullptr;
-IConsoleObject*                UGF_DebuggerCommands::DumpTrainingCommand = nullptr;
+IConsoleObject*                UGF_DebuggerCommands::DumpGrowthCommand = nullptr;
 
 // ─── CVar callback ────────────────────────────────────────────────────────────
 void UGF_DebuggerCommands::RebindCVarCallback(IConsoleVariable* CVar)
@@ -40,14 +40,14 @@ void UGF_DebuggerCommands::RegisterCommands()
 
     RebindCVarCallback(ShowDebuggerCVar);
 
-    DumpTrainingCommand = IConsoleManager::Get().RegisterConsoleCommand(
-        TEXT("gf.dumpevs"),
-        TEXT("Logs every party Creature's Training, Potentials and computed stats."),
-        FConsoleCommandWithWorldDelegate::CreateStatic(&UGF_DebuggerCommands::DumpPartyTraining),
+    DumpGrowthCommand = IConsoleManager::Get().RegisterConsoleCommand(
+        TEXT("gf.dumpeps"),
+        TEXT("Logs every party Creature's APs, EPs, affinity and computed stats."),
+        FConsoleCommandWithWorldDelegate::CreateStatic(&UGF_DebuggerCommands::DumpPartyGrowth),
         ECVF_Cheat
     );
 
-    UE_LOG(LogTemp, Log, TEXT("GE Debugger: console commands 'gf.debugger' and 'gf.dumpevs' registered."));
+    UE_LOG(LogTemp, Log, TEXT("GE Debugger: console commands 'gf.debugger' and 'gf.dumpeps' registered."));
 }
 
 void UGF_DebuggerCommands::UnregisterCommands()
@@ -60,26 +60,26 @@ void UGF_DebuggerCommands::UnregisterCommands()
         ShowDebuggerCVar = nullptr;
     }
 
-    if (DumpTrainingCommand)
+    if (DumpGrowthCommand)
     {
-        IConsoleManager::Get().UnregisterConsoleObject(DumpTrainingCommand);
-        DumpTrainingCommand = nullptr;
+        IConsoleManager::Get().UnregisterConsoleObject(DumpGrowthCommand);
+        DumpGrowthCommand = nullptr;
     }
 }
 
-// ─── TrainingValue dump ─────────────────────────────────────────────────────────────────
-void UGF_DebuggerCommands::DumpPartyTraining(UWorld* World)
+// ─── AP / EP dump ───────────────────────────────────────────────────────────────────────
+void UGF_DebuggerCommands::DumpPartyGrowth(UWorld* World)
 {
     UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
     UGF_CreatureManagerSubsystem* Mgr = GI ? GI->GetSubsystem<UGF_CreatureManagerSubsystem>() : nullptr;
     if (!Mgr)
     {
-        UE_LOG(LogTemp, Warning, TEXT("gf.dumpevs: CreatureManagerSubsystem not available."));
+        UE_LOG(LogTemp, Warning, TEXT("gf.dumpeps: CreatureManagerSubsystem not available."));
         return;
     }
 
     const int32 PartySize = Mgr->GetPartySize();
-    UE_LOG(LogTemp, Display, TEXT("=== gf.dumpevs: %d Creature in party ==="), PartySize);
+    UE_LOG(LogTemp, Display, TEXT("=== gf.dumpeps: %d Creature in party ==="), PartySize);
 
     for (int32 i = 0; i < PartySize; ++i)
     {
@@ -89,8 +89,7 @@ void UGF_DebuggerCommands::DumpPartyTraining(UWorld* World)
             continue;
         }
 
-        const int32 TotalTraining = Mon.HP_Training + Mon.Attack_Training + Mon.Defense_Training
-            + Mon.Magic_Training + Mon.Poise_Training + Mon.Speed_Training;
+        const int32 TotalEP = Mon.GetTotalEP();
 
         const FGF_CreatureCurrentStats Stats = UGF_CreatureStatLibrary::CalculateCreatureStats(Mon);
 
@@ -104,12 +103,12 @@ void UGF_DebuggerCommands::DumpPartyTraining(UWorld* World)
             Mon.CreatureID,
             Mon.bIsDowned ? TEXT("  [FAINTED]") : TEXT(""),
             Mon.bIsEgg ? TEXT("  [EGG]") : TEXT(""));
-        UE_LOG(LogTemp, Display, TEXT("     Training   HP:%3d Atk:%3d Def:%3d SpA:%3d SpD:%3d Spe:%3d  (total %d/510)"),
-            Mon.HP_Training, Mon.Attack_Training, Mon.Defense_Training,
-            Mon.Magic_Training, Mon.Poise_Training, Mon.Speed_Training, TotalTraining);
-        UE_LOG(LogTemp, Display, TEXT("     Potentials   HP:%3d Atk:%3d Def:%3d SpA:%3d SpD:%3d Spe:%3d"),
-            Mon.HP_Potential, Mon.Attack_Potential, Mon.Defense_Potential,
-            Mon.Magic_Potential, Mon.Poise_Potential, Mon.Speed_Potential);
+        UE_LOG(LogTemp, Display, TEXT("     EPs   HP:%3d Atk:%3d Def:%3d Mag:%3d Poi:%3d Spe:%3d  (spent %d/%d)"),
+            Mon.HP_EP, Mon.Attack_EP, Mon.Defense_EP,
+            Mon.Magic_EP, Mon.Poise_EP, Mon.Speed_EP, TotalEP, Mon.GetEPBudget());
+        UE_LOG(LogTemp, Display, TEXT("     APs   HP:%3d Atk:%3d Def:%3d Mag:%3d Poi:%3d Spe:%3d  (affinity %d/%d)"),
+            Mon.HP_AP, Mon.Attack_AP, Mon.Defense_AP,
+            Mon.Magic_AP, Mon.Poise_AP, Mon.Speed_AP, Mon.Affinity, FGF_CreatureInstanceData::MaxAffinity);
         UE_LOG(LogTemp, Display, TEXT("     Stats HP:%.0f/%.0f Atk:%.0f Def:%.0f SpA:%.0f SpD:%.0f Spe:%.0f"),
             Mon.CurrentHP, Stats.MaxHP, Stats.Attack, Stats.Defense,
             Stats.Magic, Stats.Poise, Stats.Speed);

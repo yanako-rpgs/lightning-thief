@@ -18,7 +18,7 @@ class SWindow;
  * Console usage in-game or PIE:
  *   gf.debugger 1   — opens the floating debugger window
  *   gf.debugger 0   — closes it
- *   gf.dumpevs      — logs every party Creature's Training, Potentials and computed stats
+ *   gf.dumpeps      — logs every party Creature's APs, EPs, affinity and computed stats
  */
 UCLASS()
 class GAMMAFRAMEWORKBATTLE_API UGF_DebuggerCommands : public UObject
@@ -35,12 +35,12 @@ public:
 
     static void RebindCVarCallback(IConsoleVariable* CVar);
 
-    /** Logs every party Creature's Training, Potentials and computed stats (gf.dumpevs). */
-    static void DumpPartyTraining(UWorld* World);
+    /** Logs every party Creature's APs, EPs, affinity and computed stats (gf.dumpeps). */
+    static void DumpPartyGrowth(UWorld* World);
 
 private:
     static TWeakPtr<SWindow>                    DebuggerWindow;
     static TWeakPtr<class SGF_DebuggerWidget>   DebuggerWidgetRef;
     static IConsoleVariable*                    ShowDebuggerCVar;
-    static IConsoleObject*                      DumpTrainingCommand;
+    static IConsoleObject*                      DumpGrowthCommand;
 };
