@@ -3,6 +3,7 @@
 #include "GF_BattleManagementFunctions.h"
 #include "GF_ElementTypes.h"
 #include "GF_SkillDefinition.h"
+#include "GF_CreatureRules.h"
 #include "Math/UnrealMathUtility.h"
 
 //====================================================================================
@@ -146,8 +147,8 @@ bool BattleManagementFunctions::IsImmune(EGF_Element AttackType, EGF_Element Def
 
 int32 BattleManagementFunctions::CalculateStat(
     int32 BaseStat,
-    int32 Potential,
-    int32 TrainingValue,
+    int32 AP,
+    int32 EP,
     int32 Level,
     EGF_Temperament Temperament,
     bool bIsAttack,
@@ -157,20 +158,20 @@ int32 BattleManagementFunctions::CalculateStat(
     bool bIsSpeed,
     bool bIsHP)
 {
-    // Clamp Potential and TrainingValue values
-    Potential = FMath::Clamp(Potential, 0, 31);
-    TrainingValue = FMath::Clamp(TrainingValue, 0, 255);
+    // Clamp AP and EP values
+    AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
+    EP = FMath::Max(EP, 0);
 
     if (bIsHP)
     {
-        // HP formula: ((2 * Base + Potential + (TrainingValue / 4)) * Level / 100) + Level + 10
-        int32 HP = ((2 * BaseStat + Potential + (TrainingValue / 4)) * Level / 100) + Level + 10;
+        // HP formula: ((2 * Base + AP + EP) * Level / 100) + Level + 10
+        int32 HP = ((2 * BaseStat + AP + EP) * Level / 100) + Level + 10;
         return HP;
     }
     else
     {
-        // Other stats formula: (((2 * Base + Potential + (TrainingValue / 4)) * Level / 100) + 5) * Temperament
-        int32 Stat = ((2 * BaseStat + Potential + (TrainingValue / 4)) * Level / 100) + 5;
+        // Other stats formula: (((2 * Base + AP + EP) * Level / 100) + 5) * Temperament
+        int32 Stat = ((2 * BaseStat + AP + EP) * Level / 100) + 5;
 
         // Apply nature modifier
         float TemperamentMod = GetTemperamentModifier(Temperament, bIsAttack, bIsDefense, bIsMagic, bIsPoise, bIsSpeed);
@@ -202,12 +203,12 @@ void BattleManagementFunctions::CalculateAllStats(
     int32 Level = Creature.Level;
     EGF_Temperament Temperament = Creature.Temperament;
 
-    OutHP = CalculateStat(BaseStats.HP, Creature.HP_Potential, Creature.HP_Training, Level, Temperament, false, false, false, false, false, true);
-    OutAttack = CalculateStat(BaseStats.Attack, Creature.Attack_Potential, Creature.Attack_Training, Level, Temperament, true, false, false, false, false, false);
-    OutDefense = CalculateStat(BaseStats.Defense, Creature.Defense_Potential, Creature.Defense_Training, Level, Temperament, false, true, false, false, false, false);
-    OutMagic = CalculateStat(BaseStats.Magic, Creature.Magic_Potential, Creature.Magic_Training, Level, Temperament, false, false, true, false, false, false);
-    OutPoise = CalculateStat(BaseStats.Poise, Creature.Poise_Potential, Creature.Poise_Training, Level, Temperament, false, false, false, true, false, false);
-    OutSpeed = CalculateStat(BaseStats.Speed, Creature.Speed_Potential, Creature.Speed_Training, Level, Temperament, false, false, false, false, true, false);
+    OutHP = CalculateStat(BaseStats.HP, Creature.HP_AP, Creature.HP_EP, Level, Temperament, false, false, false, false, false, true);
+    OutAttack = CalculateStat(BaseStats.Attack, Creature.Attack_AP, Creature.Attack_EP, Level, Temperament, true, false, false, false, false, false);
+    OutDefense = CalculateStat(BaseStats.Defense, Creature.Defense_AP, Creature.Defense_EP, Level, Temperament, false, true, false, false, false, false);
+    OutMagic = CalculateStat(BaseStats.Magic, Creature.Magic_AP, Creature.Magic_EP, Level, Temperament, false, false, true, false, false, false);
+    OutPoise = CalculateStat(BaseStats.Poise, Creature.Poise_AP, Creature.Poise_EP, Level, Temperament, false, false, false, true, false, false);
+    OutSpeed = CalculateStat(BaseStats.Speed, Creature.Speed_AP, Creature.Speed_EP, Level, Temperament, false, false, false, false, true, false);
 
     UE_LOG(LogTemp, Log, TEXT("Stats calculated for %s (Level %d):"), *Creature.GetDisplayName().ToString(), Level);
     UE_LOG(LogTemp, Log, TEXT("  HP: %d, Atk: %d, Def: %d, Magic: %d, Poise: %d, Speed: %d"),
@@ -224,16 +225,8 @@ float BattleManagementFunctions::GetSTABBonus(
     EGF_Element CreatureType2,
     bool bHasAdaptability)
 {
-    // Check if move type matches either of the Creature's types
-    bool bHasSTAB = (SkillElement == CreatureType1) || (SkillElement == CreatureType2);
-
-    if (!bHasSTAB)
-    {
-        return 1.0f;
-    }
-
-    // STAB is 2.0 with Adaptability, 1.5 normally
-    return bHasAdaptability ? 2.0f : 1.5f;
+    // Single-element creatures get the stronger STAB -- see UGF_CreatureRulesSettings.
+    return UGF_CreatureRulesSettings::GetSTABMultiplier(SkillElement, CreatureType1, CreatureType2, bHasAdaptability);
 }
 
 float BattleManagementFunctions::GetTemperamentModifier(

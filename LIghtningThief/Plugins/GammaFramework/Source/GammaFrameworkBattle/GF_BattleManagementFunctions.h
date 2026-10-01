@@ -61,13 +61,12 @@ public:
     //====================================================================================
     
     /**
-     * Calculate actual stat from base stat, Potentials, Training, level, and nature
-     * Uses classic+ stat formula
+     * Calculate actual stat from base stat, AP, EP, level, and nature
      */
     static int32 CalculateStat(
         int32 BaseStat,
-        int32 Potential,
-        int32 TrainingValue,
+        int32 AP,
+        int32 EP,
         int32 Level,
         EGF_Temperament Temperament,
         bool bIsAttack = false,
@@ -98,7 +97,8 @@ public:
     
     /**
      * Get STAB (Same Type Attack Bonus) multiplier
-     * @return 1.5 for STAB, 2.0 with Adaptability, 1.0 otherwise
+     * @return the dual- or single-element STAB from UGF_CreatureRulesSettings
+     *         (plus the Adaptability bonus), 1.0 when the element doesn't match
      */
     static float GetSTABBonus(
         EGF_Element SkillElement,
