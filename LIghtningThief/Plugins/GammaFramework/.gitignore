@@ -1,0 +1,27 @@
+# Unreal build artefacts. Binaries/ and Intermediate/ are ~770MB here and are
+# regenerated from source on every build -- they must never be committed.
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.opendb
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Content cooked or imported locally
+*.umap_backup
+*.uasset_backup

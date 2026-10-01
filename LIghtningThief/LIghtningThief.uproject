@@ -17,6 +17,35 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
+			"Name": "AutoSizeComments",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/ae89a2c4ab384de0a3f213b23de324f3"
+		},
+		{
+			"Name": "BlueprintAssist",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/9e895371fa3a471c87337860d6f341ff"
+		},
+		{
+			"Name": "PaperZD",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/c4b43502026047d89296cd7bffd92828"
+		},
+		{
+			"Name": "SaveFileEditor",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/489bec9346e0467c95a16185f42ab7cb"
+		},
+		{
+			"Name": "UINavigation",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/b9ee9669c98146cd8433a62ea7f23699"
+		},
+		{
+			"Name": "GammaFramework",
+			"Enabled": true
 		}
 	]
 }
