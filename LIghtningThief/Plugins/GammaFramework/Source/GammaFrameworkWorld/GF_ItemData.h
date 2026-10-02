@@ -98,11 +98,11 @@ public:
     // VITAMIN PROPERTIES
     //--------------------
 
-    /** Which TrainingValue this vitamin raises. Only used when ItemType == Vitamin. */
+    /** Which EP this vitamin raises. Only used when ItemType == Vitamin. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Vitamin")
     EGF_VitaminStat VitaminStat = EGF_VitaminStat::HP;
 
-    /** How many TrainingValue points one dose adds (10 in classic). */
+    /** How many EP one dose adds (10 in classic). */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Vitamin", meta = (ClampMin = "1", ClampMax = "252"))
     int32 TrainingBoostAmount = 10;
 

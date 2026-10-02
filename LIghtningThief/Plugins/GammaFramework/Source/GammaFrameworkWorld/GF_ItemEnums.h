@@ -18,13 +18,13 @@ enum class EGF_HeldItemEffect : uint8
     HPRestore           UMETA(DisplayName = "HP Restore"),
     StatusCure          UMETA(DisplayName = "Status Cure"),
     RegenEachTurn           UMETA(DisplayName = "Regenerate Each Turn"),
-    RegenIfVenom         UMETA(DisplayName = "Regenerate If Venom, Else Harm"),
+    RegenIfPoison        UMETA(DisplayName = "Regenerate If Poison, Else Harm"),
 
     // DEFENSIVE
     SurviveLethalOnce           UMETA(DisplayName = "Survive Lethal Hit (once, from full)"),
     SurviveLethalChance           UMETA(DisplayName = "Survive Lethal Hit (chance)"),
     PoiseUpNoStatus         UMETA(DisplayName = "Poise Up, No Status Skills"),
-    FloatAboveTerra          UMETA(DisplayName = "Float (immune to Terra)"),
+    FloatAboveTerra          UMETA(DisplayName = "Float (no effect - Dokimon has no ground element)"),
 
     // OFFENSIVE
     PowerAtHPCost             UMETA(DisplayName = "Power Boost With Recoil"),
@@ -110,12 +110,12 @@ enum class EGF_ItemType : uint8
     EvolutionStone  UMETA(DisplayName = "Evolution Stone"),
     KeyItem         UMETA(DisplayName = "Key Item"),
     BattleItem      UMETA(DisplayName = "Battle Item"),
-    Vitamin         UMETA(DisplayName = "Vitamin (TrainingValue Boost)"),
+    Vitamin         UMETA(DisplayName = "Vitamin (no effect yet)"),
     LevelBoost       UMETA(DisplayName = "Level Boost")
 };
 
 /**
- * Which TrainingValue a vitamin raises (Protein, Iron, etc.)
+ * Which EP a vitamin raises (Protein, Iron, etc.)
  */
 UENUM(BlueprintType)
 enum class EGF_VitaminStat : uint8
@@ -140,12 +140,12 @@ enum class EGF_CoreType : uint8
     HyperCore    UMETA(DisplayName = "Hyper Core"),      // 2.0x
     AbsoluteCore UMETA(DisplayName = "Absolute Core"),   // Always catches
     WardenCore   UMETA(DisplayName = "Warden Core"),     // 1.5x, preserve-issued
-    SnareCore    UMETA(DisplayName = "Snare Core"),      // 3.5x against Chitin or Tide
+    SnareCore    UMETA(DisplayName = "Snare Core"),      // 3.5x against Water
     DepthCore    UMETA(DisplayName = "Depth Core"),      // 3.5x underwater
     CradleCore   UMETA(DisplayName = "Cradle Core"),     // (41 - Level) / 10, min 1.0x
     EchoCore     UMETA(DisplayName = "Echo Core"),       // 3.5x if registered in the Compendium
     AeonCore     UMETA(DisplayName = "Aeon Core"),       // 1.0x -> 4.0x over turns 1-11
-    HearthCore   UMETA(DisplayName = "Hearth Core"),     // 1.0x, boosts bond
+    HearthCore   UMETA(DisplayName = "Hearth Core"),     // 1.0x, boosts affinity
     EliteCore    UMETA(DisplayName = "Elite Core"),      // 1.0x, cosmetic
     GloamCore    UMETA(DisplayName = "Gloam Core"),      // 3.5x at night or underground
     MendCore     UMETA(DisplayName = "Mend Core"),       // 1.0x, heals on claim
