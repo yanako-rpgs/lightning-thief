@@ -12,38 +12,21 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "GF_TradeSubsystem.generated.h"
 
-/**
- * Where the trade relay lives, plus the timing knobs.
- *
- * A DeveloperSettings page rather than hardcoded constants so the relay can be
- * repointed (staging, a self-hosted fallback, a tester-only instance) from
- * DefaultGame.ini without a recompile.
- */
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Gamma Framework Link Trading"))
 class GAMMAFRAMEWORKCREATURES_API UGF_TradeSettings : public UDeveloperSettings
 {
     GENERATED_BODY()
 
 public:
-    /**
-     * Base URL of the relay, with no trailing slash. The client appends
-     * /v1/session/<code>/... to this.
-     *
-     * Must be https. The payload is a Creature rather than anything sensitive,
-     * but plain http would let anyone on the path swap a blob in flight.
-     */
     UPROPERTY(Config, EditAnywhere, Category = "Relay")
     FString RelayBaseUrl = TEXT("https://example.workers.dev");
 
-    /** How often to poll the relay while waiting on the partner. */
     UPROPERTY(Config, EditAnywhere, Category = "Relay", meta = (ClampMin = "0.5", ClampMax = "10.0"))
     float PollIntervalSeconds = 1.0f;
 
-    /** Give up if nobody joins the code within this long. */
     UPROPERTY(Config, EditAnywhere, Category = "Relay", meta = (ClampMin = "15.0", ClampMax = "600.0"))
     float PartnerWaitTimeoutSeconds = 180.0f;
 
-    /** Per-request timeout. Short, because we retry by polling anyway. */
     UPROPERTY(Config, EditAnywhere, Category = "Relay", meta = (ClampMin = "2.0", ClampMax = "60.0"))
     float RequestTimeoutSeconds = 10.0f;
 };

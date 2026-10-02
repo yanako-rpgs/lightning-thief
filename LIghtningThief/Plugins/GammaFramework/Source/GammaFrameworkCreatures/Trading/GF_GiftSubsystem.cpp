@@ -422,10 +422,10 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftExportCommand(
 
 static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
     TEXT("GE.Gift.Make"),
-    TEXT("GE.Gift.Make <Species> [Level] [ivs=31,31,31,31,31,31] [evs=0,0,0,0,0,0] [nature=Timid] [trait=Lodestone] "
+    TEXT("GE.Gift.Make <Species> [Level] [aps=50,50,50,50,50,50] [eps=0,0,0,0,0,0] [nature=Timid] [trait=Lodestone] "
          "[moves=Thunderbolt,Spark] [unique=1] [gender=Female] [ot=NAME] [otid=12345] [nick=NAME] [ball=Cherish_Core] "
          "[metloc=Tidecliff_City] [mettype=Gift] [metlevel=5] [metdate=2004-07-17] [note=Some_flavour_text.] "
-         "[bond=255] [noevolve=1] [egg=1] "
+         "[affinity=100] [noevolve=1] [egg=1] "
          "- build an event Creature and print its gift blob. Underscores in a value become spaces."),
     FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
         [](const TArray<FString>& Args, UWorld* World)
@@ -475,40 +475,40 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
                     continue;
                 }
 
-                if (Key == TEXT("ivs"))
+                if (Key == TEXT("aps"))
                 {
                     int32 Stats[6] = { 0 };
                     if (!ParseSixStats(Value, Stats))
                     {
-                        UE_LOG(LogGift, Error, TEXT("ivs needs six comma-separated numbers (HP,Atk,Def,SpA,SpD,Spe)."));
+                        UE_LOG(LogGift, Error, TEXT("aps needs six comma-separated numbers (HP,Atk,Def,SpA,SpD,Spe)."));
                         return;
                     }
 
-                    Creature.HP_Potential             = FMath::Clamp(Stats[0], 0, UGF_CreatureCodec::MaxPotential);
-                    Creature.Attack_Potential         = FMath::Clamp(Stats[1], 0, UGF_CreatureCodec::MaxPotential);
-                    Creature.Defense_Potential        = FMath::Clamp(Stats[2], 0, UGF_CreatureCodec::MaxPotential);
-                    Creature.Magic_Potential  = FMath::Clamp(Stats[3], 0, UGF_CreatureCodec::MaxPotential);
-                    Creature.Poise_Potential = FMath::Clamp(Stats[4], 0, UGF_CreatureCodec::MaxPotential);
-                    Creature.Speed_Potential          = FMath::Clamp(Stats[5], 0, UGF_CreatureCodec::MaxPotential);
+                    Creature.HP_AP             = FMath::Clamp(Stats[0], 0, UGF_CreatureCodec::MaxAP);
+                    Creature.Attack_AP         = FMath::Clamp(Stats[1], 0, UGF_CreatureCodec::MaxAP);
+                    Creature.Defense_AP        = FMath::Clamp(Stats[2], 0, UGF_CreatureCodec::MaxAP);
+                    Creature.Magic_AP  = FMath::Clamp(Stats[3], 0, UGF_CreatureCodec::MaxAP);
+                    Creature.Poise_AP = FMath::Clamp(Stats[4], 0, UGF_CreatureCodec::MaxAP);
+                    Creature.Speed_AP          = FMath::Clamp(Stats[5], 0, UGF_CreatureCodec::MaxAP);
                 }
-                else if (Key == TEXT("evs"))
+                else if (Key == TEXT("eps"))
                 {
                     int32 Stats[6] = { 0 };
                     if (!ParseSixStats(Value, Stats))
                     {
-                        UE_LOG(LogGift, Error, TEXT("evs needs six comma-separated numbers (HP,Atk,Def,SpA,SpD,Spe)."));
+                        UE_LOG(LogGift, Error, TEXT("eps needs six comma-separated numbers (HP,Atk,Def,SpA,SpD,Spe)."));
                         return;
                     }
 
-                    // Left unclamped against the 510 total on purpose --
+                    // Left unclamped against the level's EP budget on purpose --
                     // EncodeCreature validates and will name the exact problem,
                     // which is more useful than silently reshaping the spread.
-                    Creature.HP_Training             = Stats[0];
-                    Creature.Attack_Training         = Stats[1];
-                    Creature.Defense_Training        = Stats[2];
-                    Creature.Magic_Training  = Stats[3];
-                    Creature.Poise_Training = Stats[4];
-                    Creature.Speed_Training          = Stats[5];
+                    Creature.HP_EP             = Stats[0];
+                    Creature.Attack_EP         = Stats[1];
+                    Creature.Defense_EP        = Stats[2];
+                    Creature.Magic_EP  = Stats[3];
+                    Creature.Poise_EP = Stats[4];
+                    Creature.Speed_EP          = Stats[5];
                 }
                 else if (Key == TEXT("nature"))
                 {
@@ -673,9 +673,11 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
                     }
                     Creature.MemoNote = Note;
                 }
-                else if (Key == TEXT("bond"))
+                else if (Key == TEXT("affinity"))
                 {
-                    Creature.Bond = FMath::Clamp(FCString::Atoi(*Value), 0, UGF_CreatureCodec::MaxBond);
+                    // Through AddAffinity so the APs rise with it; an aps= given after this
+                    // still overrides them.
+                    Creature.AddAffinity(FCString::Atoi(*Value) - Creature.Affinity);
                 }
                 else
                 {
@@ -683,7 +685,7 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
                 }
             }
 
-            // Potentials, nature and level all feed the stat formula, so anything set
+            // APs, EPs, nature and level all feed the stat formula, so anything set
             // above has invalidated whatever CreateCreature computed.
             Manager->RecalculateStats(Creature);
             Creature.CurrentHP = Creature.MaxHP;

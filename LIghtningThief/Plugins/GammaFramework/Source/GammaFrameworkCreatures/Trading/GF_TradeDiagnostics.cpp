@@ -310,20 +310,22 @@ FGF_CodecTestResult UGF_TradeDiagnostics::RunCodecTamperTest(const FGF_CreatureI
     {
         FGF_CreatureInstanceData Bad;
         MakeVariant(Bad);
-        Bad.HP_Potential = 999;
-        ExpectEncodeRejected(TEXT("Potential of 999"), Bad);
+        Bad.HP_AP = 999;
+        ExpectEncodeRejected(TEXT("AP of 999"), Bad);
     }
 
     {
         FGF_CreatureInstanceData Bad;
         MakeVariant(Bad);
-        Bad.HP_Training = 255;
-        Bad.Attack_Training = 255;
-        Bad.Defense_Training = 255;
-        Bad.Magic_Training = 255;
-        Bad.Poise_Training = 255;
-        Bad.Speed_Training = 255;
-        ExpectEncodeRejected(TEXT("TrainingValue total of 1530"), Bad);
+        Bad.HP_EP = Bad.GetEPBudget() + 1;
+        ExpectEncodeRejected(TEXT("more EP than the level has earned"), Bad);
+    }
+
+    {
+        FGF_CreatureInstanceData Bad;
+        MakeVariant(Bad);
+        Bad.Affinity = FGF_CreatureInstanceData::MaxAffinity + 1;
+        ExpectEncodeRejected(TEXT("affinity over max"), Bad);
     }
 
     {

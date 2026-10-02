@@ -16,8 +16,8 @@
  * copies of it. All eight collapse here, and the converter is gone.
  *
  * The roster is the thirteen Dokimon elements from the Lightning Thief GDD.
- * Neutral is not one of them: it is kept only as the element of plain, typeless
- * skills (Clobber, Cut, Protect...), and no creature should be given it.
+ * Light doubles as the plain element: basic skills like Clobber, Cut and
+ * Protect are Light, and it takes the classic Normal row of the chart.
  *
  * The chart is a classic-chart placeholder for now. See GetMatchup.
  */
@@ -25,9 +25,6 @@ UENUM(BlueprintType)
 enum class EGF_Element : uint8
 {
 	None      UMETA(DisplayName = "None"),
-
-	// Typeless skills only.
-	Neutral   UMETA(DisplayName = "Neutral"),
 
 	Fire      UMETA(DisplayName = "Fire"),
 	Grass     UMETA(DisplayName = "Grass"),
@@ -118,7 +115,7 @@ public:
 
 	/**
 	 * Uppercase token used to build per-element asset names, e.g.
-	 * SPR_FIRE_icon_EGG_Sprite_0. Returns "000" for None and Neutral, which is
+	 * SPR_FIRE_icon_EGG_Sprite_0. Returns "000" for None, which is
 	 * the plain/fallback sheet.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Gamma Framework|Elements")

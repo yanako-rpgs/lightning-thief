@@ -166,10 +166,6 @@ public:
 	bool bLogTimings = true;
 };
 
-/**
- * Project Settings > Game > Gamma Framework Boot.
- * One soft ref so the boot widget does not have to hard-reference a plan asset.
- */
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "Gamma Framework Boot"))
 class GAMMAFRAMEWORKWORLD_API UGF_BootSettings : public UDeveloperSettings
 {
@@ -184,9 +180,6 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Boot")
 	TSoftObjectPtr<UGF_BootPlan> DefaultBootPlan;
 
-	/** Skip the boot sequence entirely in PIE. Editor sessions have a warm shader
-	 *  cache and a warm OS file cache already; waiting through it every launch is
-	 *  just lost iteration time. */
 	UPROPERTY(config, EditAnywhere, Category = "Boot")
 	bool bSkipBootInEditor = true;
 };

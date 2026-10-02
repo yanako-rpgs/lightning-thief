@@ -10,10 +10,7 @@ namespace
 	//
 	// Placeholder chart: the classic (Gen 6+) chart cut down to the Dokimon
 	// elements, until Lightning Thief has its own. Fight plays Fighting, and
-	// Neutral (typeless skills) plays Normal.
-	//
-	// Light has no classic counterpart, so it has no row and appears in no
-	// column -- it deals and takes neutral damage from everything for now.
+	// Light -- the element of the plain skills -- plays Normal.
 	struct FMatchup
 	{
 		EGF_Element Defending;
@@ -24,7 +21,7 @@ namespace
 	const TMap<EGF_Element, TArray<FMatchup>>& Chart()
 	{
 		static const TMap<EGF_Element, TArray<FMatchup>> Table = {
-			{ EGF_Element::Neutral, {
+			{ EGF_Element::Light, {
 				{ EGF_Element::Ghost, 0.0f },
 			}},
 			{ EGF_Element::Fire, {
@@ -55,7 +52,7 @@ namespace
 				{ EGF_Element::Ice, 0.5f },
 			}},
 			{ EGF_Element::Fight, {
-				{ EGF_Element::Neutral, 2.0f }, { EGF_Element::Ice, 2.0f },
+				{ EGF_Element::Light, 2.0f },   { EGF_Element::Ice, 2.0f },
 				{ EGF_Element::Dark, 2.0f },
 				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Flying, 0.5f },
 				{ EGF_Element::Fairy, 0.5f },
@@ -72,7 +69,7 @@ namespace
 			{ EGF_Element::Ghost, {
 				{ EGF_Element::Ghost, 2.0f },
 				{ EGF_Element::Dark, 0.5f },
-				{ EGF_Element::Neutral, 0.0f },
+				{ EGF_Element::Light, 0.0f },
 			}},
 			{ EGF_Element::Dragon, {
 				{ EGF_Element::Dragon, 2.0f },
@@ -131,7 +128,6 @@ FText UGF_ElementLibrary::GetElementDisplayName(EGF_Element Element)
 	// packaged game. Every user-facing element label has to be spelled out here.
 	switch (Element)
 	{
-		case EGF_Element::Neutral:  return NSLOCTEXT("GammaFramework", "Element_Neutral",  "Neutral");
 		case EGF_Element::Fire:     return NSLOCTEXT("GammaFramework", "Element_Fire",     "Fire");
 		case EGF_Element::Grass:    return NSLOCTEXT("GammaFramework", "Element_Grass",    "Grass");
 		case EGF_Element::Water:    return NSLOCTEXT("GammaFramework", "Element_Water",    "Water");
@@ -153,7 +149,6 @@ FLinearColor UGF_ElementLibrary::GetElementColor(EGF_Element Element)
 {
 	switch (Element)
 	{
-		case EGF_Element::Neutral:  return FLinearColor(0.66f, 0.66f, 0.46f, 1.f);
 		case EGF_Element::Fire:     return FLinearColor(0.94f, 0.38f, 0.05f, 1.f);
 		case EGF_Element::Grass:    return FLinearColor(0.34f, 0.75f, 0.29f, 1.f);
 		case EGF_Element::Water:    return FLinearColor(0.24f, 0.53f, 0.92f, 1.f);
@@ -190,7 +185,7 @@ FString UGF_ElementLibrary::GetElementAssetToken(EGF_Element Element)
 		case EGF_Element::Fairy:    return TEXT("FAIRY");
 		case EGF_Element::Ghost:    return TEXT("GHOST");
 		case EGF_Element::Ice:      return TEXT("ICE");
-		// Neutral and None share the plain sheet.
+		// None gets the plain sheet.
 		default:                    return TEXT("000");
 	}
 }
