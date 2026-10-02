@@ -82,57 +82,57 @@ struct FGF_CreatureCurrentStats
 };
 
 
-// Creature Potentials
+// Creature APs
 USTRUCT(BlueprintType)
-struct FGF_CreaturePotential
+struct FGF_CreatureAPs
 {
 	GENERATED_BODY()
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 HP_Potential = 0;
+	int32 HP_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Attack_Potential = 0;
+	int32 Attack_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Defense_Potential = 0;
+	int32 Defense_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 MAGICIV = 0;
+	int32 Magic_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 POISEIV = 0;
+	int32 Poise_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Speed_Potential = 0;
+	int32 Speed_AP = 0;
 
 };
 
-// Creature Training
+// Creature EPs
 USTRUCT(BlueprintType)
-struct FGF_CreatureTraining
+struct FGF_CreatureEPs
 {
 	GENERATED_BODY()
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 HP_Training = 0;
+	int32 HP_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Attack_Training = 0;
+	int32 Attack_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Defense_Training = 0;
+	int32 Defense_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 MAGICEV = 0;
+	int32 Magic_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 POISEEV = 0;
+	int32 Poise_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Core")
-	int32 Speed_Training = 0;
+	int32 Speed_EP = 0;
 
 };
 
@@ -343,11 +343,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "This is where the Creature CURRENT STATS go!", Category = "Creature | Statistics | System"))
 	FGF_CreatureCurrentStats CurrentStats;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "This is where the Creature Potentials go!", Category = "Creature | Statistics | System"))
-	FGF_CreaturePotential Potentials;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "This is where the Creature APs go!", Category = "Creature | Statistics | System"))
+	FGF_CreatureAPs APs;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "This is where the Creature Training go!", Category = "Creature | Statistics | System"))
-	FGF_CreatureTraining Training;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "This is where the Creature EPs go!", Category = "Creature | Statistics | System"))
+	FGF_CreatureEPs EPs;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "The current STATUS of the Creature.", Category = "Creature | Statistics | System"))
@@ -561,14 +561,14 @@ public:
 
 	//Calculate the Base Stats of the Creature
 	UFUNCTION(BlueprintCallable, Category = "Creature | Stats")
-	float CalculateBaseStats(float BaseStat, int32 Potential, int32 TrainingValue, int32 Level, float temperamentMod);
+	float CalculateBaseStats(float BaseStat, int32 AP, int32 EP, int32 Level, float temperamentMod);
 
 	UFUNCTION(BlueprintCallable, Category = "Creature | Stats")
-	float CalculateBaseHP(float BaseStat, int32 Potential, int32 TrainingValue, int32 Level);
+	float CalculateBaseHP(float BaseStat, int32 AP, int32 EP, int32 Level);
 
-	//Roll Potentials
+	//Roll APs
 	UFUNCTION(BlueprintCallable, Category = "Creature | Stats")
-	void CreatePotentials();
+	void CreateAPs();
 
 	//SetWildInfo
 	UFUNCTION(BlueprintCallable, Category = "Creature | Stats")

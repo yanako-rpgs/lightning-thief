@@ -86,27 +86,27 @@ struct FGF_TamerCreatureSetup
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset")
 	bool bForceUnique = false;
 
-	// If bPresetPotentials is true, all six values below replace the random rolls
+	// If bPresetAPs is true, all six values below replace the random rolls
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset")
-	bool bPresetPotentials = false;
+	bool bPresetAPs = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 HP_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 HP_AP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 Attack_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 Attack_AP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 Defense_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 Defense_AP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 Magic_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 Magic_AP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 Poise_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 Poise_AP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetPotentials", ClampMin = "0", ClampMax = "31"))
-	int32 Speed_Potential = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset", meta = (EditCondition = "bPresetAPs", ClampMin = "0", ClampMax = "50"))
+	int32 Speed_AP = 50;
 };
 
 // AI Difficulty levels

@@ -4,6 +4,7 @@
 #include "GF_TamerMaster.h"
 #include "GF_ElementTypes.h"
 #include "GF_DiagLog.h"
+#include "GF_CreatureRules.h"
 #include "Settings/GF_SettingsSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "UObject/Stack.h"   // FFrame::GetScriptCallstack - diagnostic in SendOutNextCreature
@@ -238,14 +239,14 @@ void AGF_TamerMaster::InitializeTeam()
 		if (Setup.bForceUnique)
 			InstanceData.bIsUnique = true;
 
-		if (Setup.bPresetPotentials)
+		if (Setup.bPresetAPs)
 		{
-			InstanceData.HP_Potential             = Setup.HP_Potential;
-			InstanceData.Attack_Potential         = Setup.Attack_Potential;
-			InstanceData.Defense_Potential        = Setup.Defense_Potential;
-			InstanceData.Magic_Potential  = Setup.Magic_Potential;
-			InstanceData.Poise_Potential = Setup.Poise_Potential;
-			InstanceData.Speed_Potential          = Setup.Speed_Potential;
+			InstanceData.HP_AP             = Setup.HP_AP;
+			InstanceData.Attack_AP         = Setup.Attack_AP;
+			InstanceData.Defense_AP        = Setup.Defense_AP;
+			InstanceData.Magic_AP  = Setup.Magic_AP;
+			InstanceData.Poise_AP = Setup.Poise_AP;
+			InstanceData.Speed_AP          = Setup.Speed_AP;
 		}
 
 		//Apply the HeldItem if there was one, otherwise do nothing
@@ -1027,11 +1028,8 @@ float AGF_TamerMaster::CalculateSkillScore(const FGF_CreatureInstanceData& Attac
     if (AttackerSpecies)
     {
         EGF_Element MoveTypeAsCreature = static_cast<EGF_Element>(static_cast<uint8>(SkillDefaults->Type));
-        if (MoveTypeAsCreature == AttackerSpecies->PrimaryElement ||
-            MoveTypeAsCreature == AttackerSpecies->SecondaryElement)
-        {
-            Score *= 1.5f;
-        }
+        Score *= UGF_CreatureRulesSettings::GetSTABMultiplier(
+            MoveTypeAsCreature, AttackerSpecies->PrimaryElement, AttackerSpecies->SecondaryElement);
     }
 
     // Consider accuracy

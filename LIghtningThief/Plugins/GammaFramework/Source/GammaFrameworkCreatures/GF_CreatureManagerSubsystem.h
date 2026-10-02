@@ -274,10 +274,30 @@ public:
     UGF_CreatureSpeciesData* GetCreatureSpeciesData(FName SpeciesName) const;
 
     /**
-     * Recalculate a Creature's stats based on current level, Potentials, Training
+     * Recalculate a Creature's stats based on current level, APs, EPs
      */
     UFUNCTION(BlueprintCallable, Category = "Creature|Stats")
     void RecalculateStats(UPARAM(ref) FGF_CreatureInstanceData& Creature);
+
+    /**
+     * Move EPs into (positive Delta) or back out of (negative Delta) one stat of a
+     * party Creature, then recalculate and save. Allowed at any time outside battle.
+     * Clamped to the Creature's unspent points and to what the stat holds.
+     * @return the points actually moved, signed like Delta (0 if nothing changed).
+     */
+    UFUNCTION(BlueprintCallable, Category = "Creature|Stats")
+    int32 AllocatePartyEP(int32 PartyIndex, EGF_CreatureStat Stat, int32 Delta);
+
+    /** Refund every EP of a party Creature back to unspent, then recalculate and save. */
+    UFUNCTION(BlueprintCallable, Category = "Creature|Stats")
+    bool ResetPartyEPs(int32 PartyIndex);
+
+    /**
+     * Give a party Creature affinity outside of battle (events, items), raising its
+     * APs to match. Battles already award affinity through AwardEXPFromBattle.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Creature|Stats")
+    bool AddPartyAffinity(int32 PartyIndex, int32 Delta);
 
 
 	//--------------------
@@ -1505,22 +1525,19 @@ EGF_CompendiumEntryState GetCompendiumEntryState(int32 CompendiumNumber) const;
 	int32 ApplyHealingItem(UGF_ItemData* Item, UPARAM(Ref) FGF_CreatureInstanceData& Creature, bool bConsumeItem = true);
 
 	/**
-	 * Returns how many TrainingValue points this vitamin would actually add to the given Creature.
-	 * classic rules: vitamins can't push a single stat's TrainingValue above 100, and the total
-	 * across all six stats caps at 510.
-	 * Returns 0 if the item isn't a vitamin or a cap is already reached — use this
-	 * to preview in the bag UI ("It won't have any effect.").
+	 * Returns how many EP this vitamin would actually add to the given Creature.
+	 * Always 0 for now: EPs are earned one per level and their total is pinned to the
+	 * level, so vitamins have no job yet. Use this to preview in the bag UI
+	 * ("It won't have any effect.").
 	 */
 	UFUNCTION(BlueprintPure, Category = "Creature|Inventory")
 	int32 CalculateVitaminGain(UGF_ItemData* Item, const FGF_CreatureInstanceData& Creature) const;
 
 	/**
 	 * Applies a vitamin (Protein, Iron, Carbos, Calcium, Zinc, HP Up) to the given
-	 * Creature, raising the TrainingValue chosen by the item's VitaminStat.
-	 * HP Up also recalculates MaxHP immediately — CurrentHP rises by the same amount,
-	 * like a level up.
-	 * Consumes one of the item from inventory if bConsumeItem is true.
-	 * Returns the TrainingValue points actually added (0 if the vitamin couldn't be applied).
+	 * Creature. Currently a no-op that returns 0 -- see CalculateVitaminGain.
+	 * Consumes one of the item from inventory if bConsumeItem is true and it applied.
+	 * Returns the EP actually added.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Creature|Inventory")
 	int32 ApplyVitaminItem(UGF_ItemData* Item, UPARAM(Ref) FGF_CreatureInstanceData& Creature, bool bConsumeItem = true);
@@ -1730,8 +1747,8 @@ EGF_CompendiumEntryState GetCompendiumEntryState(int32 CompendiumNumber) const;
 	 * becomes Skitterling.
 	 *
 	 * Husk is NOT generated from scratch — in classic implementations it is a copy of the
-	 * Creature that evolved, so it inherits the moves, Uses, Potentials, Training, nature, EXP,
-	 * original tamer, met memo, bond and shininess and only the species (and
+	 * Creature that evolved, so it inherits the moves, Uses, APs, EPs, nature, EXP,
+	 * original tamer, met memo, affinity and shininess and only the species (and
 	 * therefore trait and stats) changes. Building it with GiveCreature* instead
 	 * hands the player a fresh level-5 roll whose moves come from Husk's own
 	 * learnset, which is how it ended up with an empty move list.
@@ -1746,7 +1763,7 @@ EGF_CompendiumEntryState GetCompendiumEntryState(int32 CompendiumNumber) const;
 	 * It also writes the finished Husk into the party itself. Do NOT follow it with an
 	 * "Update Party Creature Data" built from a Break/Make of the struct: every pin left
 	 * unwired on that node writes its literal default, which silently erases the trait,
-	 * moves, met memo and bond this function just set.
+	 * moves, met memo and affinity this function just set.
 	 *
 	 * @param SourcePartyIndex  Party slot holding the freshly evolved Skitterling.
 	 * @param CoreItemName      Core spent to make it, stamped as Husk's caught

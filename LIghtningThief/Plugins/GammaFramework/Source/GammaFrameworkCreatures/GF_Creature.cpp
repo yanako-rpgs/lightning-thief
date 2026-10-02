@@ -38,7 +38,7 @@ AGF_Creature::AGF_Creature()
 void AGF_Creature::BeginPlay()
 {
 	Super::BeginPlay();
-	CreatePotentials();
+	CreateAPs();
 	GenerateStats();
 
 
@@ -344,31 +344,29 @@ void AGF_Creature::Heal(float HealAmount)
 }
 
 
-//Start the Potential roll
-void AGF_Creature::CreatePotentials()
+//Start the AP roll
+void AGF_Creature::CreateAPs()
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Potentials were created!"));
+	constexpr int32 MaxAP = FGF_CreatureInstanceData::MaxAP;
 
-	Potentials.HP_Potential = FMath::RandRange(0, 31);
+	APs.HP_AP = FMath::RandRange(0, MaxAP);
 
-	Potentials.Attack_Potential = FMath::RandRange(0, 31);
+	APs.Attack_AP = FMath::RandRange(0, MaxAP);
 
-	Potentials.Defense_Potential = FMath::RandRange(0, 31);
+	APs.Defense_AP = FMath::RandRange(0, MaxAP);
 
-	Potentials.MAGICIV = FMath::RandRange(0, 31);
+	APs.Magic_AP = FMath::RandRange(0, MaxAP);
 
-	Potentials.POISEIV = FMath::RandRange(0, 31);
+	APs.Poise_AP = FMath::RandRange(0, MaxAP);
 
-	Potentials.Speed_Potential = FMath::RandRange(0, 31);
+	APs.Speed_AP = FMath::RandRange(0, MaxAP);
 
 }
 
-//Calculate the Base Stats for the Creature from the Potentials
-float AGF_Creature::CalculateBaseStats(float BaseStat, int32 Potential, int32 TrainingValue, int32 Level, float temperamentMod)
+//Calculate the Base Stats for the Creature from the APs and EPs
+float AGF_Creature::CalculateBaseStats(float BaseStat, int32 AP, int32 EP, int32 Level, float temperamentMod)
 {
-	int evVal = static_cast<int>(std::floor(TrainingValue / 4.0));
-
-	int rawVal = static_cast<int>(std::floor(((2 * BaseStat + Potential + evVal) * Level) / 100.0));
+	int rawVal = static_cast<int>(std::floor(((2 * BaseStat + AP + EP) * Level) / 100.0));
 
 	int withModBonus = rawVal + 5;
 
@@ -378,12 +376,10 @@ float AGF_Creature::CalculateBaseStats(float BaseStat, int32 Potential, int32 Tr
 
 }
 
-float AGF_Creature::CalculateBaseHP(float BaseStat, int32 Potential, int32 TrainingValue, int32 Level)
+float AGF_Creature::CalculateBaseHP(float BaseStat, int32 AP, int32 EP, int32 Level)
 {
 
-	int evVal = static_cast<int>(std::floor(TrainingValue / 4.0));
-
-	int hp = static_cast<int>(std::floor(((2 * BaseStat + Potential + evVal) * Level) / 100.0));
+	int hp = static_cast<int>(std::floor(((2 * BaseStat + AP + EP) * Level) / 100.0));
 
 
 
@@ -405,7 +401,7 @@ void AGF_Creature::GenerateStats()
 
     FGF_CreatureBaseStats SourceStats = SpeciesData ? SpeciesData->BaseStats : InstanceBaseStats;
 
-    CurrentStats.MaxHP = CalculateBaseHP(SourceStats.HP, Potentials.HP_Potential, Training.HP_Training, InstanceBaseStats.Level);
+    CurrentStats.MaxHP = CalculateBaseHP(SourceStats.HP, APs.HP_AP, EPs.HP_EP, InstanceBaseStats.Level);
 
     // Husk: see UGF_CreatureSpeciesData::HasFixedOneHP.
     if (SpeciesData && SpeciesData->HasFixedOneHP())
@@ -415,11 +411,11 @@ void AGF_Creature::GenerateStats()
 
     CurrentStats.CurrentHP = CurrentStats.MaxHP;
 
-    CurrentStats.Attack = CalculateBaseStats(SourceStats.Attack, Potentials.Attack_Potential, Training.Attack_Training, InstanceBaseStats.Level, atkMod);
-    CurrentStats.Defense = CalculateBaseStats(SourceStats.Defense, Potentials.Defense_Potential, Training.Defense_Training, InstanceBaseStats.Level, defMod);
-    CurrentStats.Magic = CalculateBaseStats(SourceStats.Magic, Potentials.MAGICIV, Training.MAGICEV, InstanceBaseStats.Level, spatkMod);
-    CurrentStats.Poise = CalculateBaseStats(SourceStats.Poise, Potentials.POISEIV, Training.POISEEV, InstanceBaseStats.Level, spdefMod);
-    CurrentStats.Speed = CalculateBaseStats(SourceStats.Speed, Potentials.Speed_Potential, Training.Speed_Training, InstanceBaseStats.Level, speedMod);
+    CurrentStats.Attack = CalculateBaseStats(SourceStats.Attack, APs.Attack_AP, EPs.Attack_EP, InstanceBaseStats.Level, atkMod);
+    CurrentStats.Defense = CalculateBaseStats(SourceStats.Defense, APs.Defense_AP, EPs.Defense_EP, InstanceBaseStats.Level, defMod);
+    CurrentStats.Magic = CalculateBaseStats(SourceStats.Magic, APs.Magic_AP, EPs.Magic_EP, InstanceBaseStats.Level, spatkMod);
+    CurrentStats.Poise = CalculateBaseStats(SourceStats.Poise, APs.Poise_AP, EPs.Poise_EP, InstanceBaseStats.Level, spdefMod);
+    CurrentStats.Speed = CalculateBaseStats(SourceStats.Speed, APs.Speed_AP, EPs.Speed_EP, InstanceBaseStats.Level, speedMod);
     CurrentStats.Level = InstanceBaseStats.Level;
 
     CreatureID = FMath::RandRange(0, 999999);
@@ -437,7 +433,7 @@ void AGF_Creature::RefreshStats()
 
     FGF_CreatureBaseStats SourceStats = SpeciesData ? SpeciesData->BaseStats : InstanceBaseStats;
 
-    CurrentStats.MaxHP = CalculateBaseHP(SourceStats.HP, Potentials.HP_Potential, Training.HP_Training, InstanceBaseStats.Level);
+    CurrentStats.MaxHP = CalculateBaseHP(SourceStats.HP, APs.HP_AP, EPs.HP_EP, InstanceBaseStats.Level);
 
     // Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. This is the one that actually
     // broke it -- InitializeFromInstanceData calls RefreshStats() on every send-out and
@@ -448,11 +444,11 @@ void AGF_Creature::RefreshStats()
         CurrentStats.MaxHP = 1.f;
     }
 
-    CurrentStats.Attack = CalculateBaseStats(SourceStats.Attack, Potentials.Attack_Potential, Training.Attack_Training, InstanceBaseStats.Level, atkMod);
-    CurrentStats.Defense = CalculateBaseStats(SourceStats.Defense, Potentials.Defense_Potential, Training.Defense_Training, InstanceBaseStats.Level, defMod);
-    CurrentStats.Magic = CalculateBaseStats(SourceStats.Magic, Potentials.MAGICIV, Training.MAGICEV, InstanceBaseStats.Level, spatkMod);
-    CurrentStats.Poise = CalculateBaseStats(SourceStats.Poise, Potentials.POISEIV, Training.POISEEV, InstanceBaseStats.Level, spdefMod);
-    CurrentStats.Speed = CalculateBaseStats(SourceStats.Speed, Potentials.Speed_Potential, Training.Speed_Training, InstanceBaseStats.Level, speedMod);
+    CurrentStats.Attack = CalculateBaseStats(SourceStats.Attack, APs.Attack_AP, EPs.Attack_EP, InstanceBaseStats.Level, atkMod);
+    CurrentStats.Defense = CalculateBaseStats(SourceStats.Defense, APs.Defense_AP, EPs.Defense_EP, InstanceBaseStats.Level, defMod);
+    CurrentStats.Magic = CalculateBaseStats(SourceStats.Magic, APs.Magic_AP, EPs.Magic_EP, InstanceBaseStats.Level, spatkMod);
+    CurrentStats.Poise = CalculateBaseStats(SourceStats.Poise, APs.Poise_AP, EPs.Poise_EP, InstanceBaseStats.Level, spdefMod);
+    CurrentStats.Speed = CalculateBaseStats(SourceStats.Speed, APs.Speed_AP, EPs.Speed_EP, InstanceBaseStats.Level, speedMod);
     CurrentStats.Level = InstanceBaseStats.Level;
 }
 
@@ -504,21 +500,21 @@ void AGF_Creature::InitializeFromInstanceData(const FGF_CreatureInstanceData& In
 
 
 
-	// Set Potentials
-	Potentials.HP_Potential = InstanceData.HP_Potential;
-	Potentials.Attack_Potential = InstanceData.Attack_Potential;
-	Potentials.Defense_Potential = InstanceData.Defense_Potential;
-	Potentials.MAGICIV = InstanceData.Magic_Potential;
-	Potentials.POISEIV = InstanceData.Poise_Potential;
-	Potentials.Speed_Potential = InstanceData.Speed_Potential;
+	// Set APs
+	APs.HP_AP = InstanceData.HP_AP;
+	APs.Attack_AP = InstanceData.Attack_AP;
+	APs.Defense_AP = InstanceData.Defense_AP;
+	APs.Magic_AP = InstanceData.Magic_AP;
+	APs.Poise_AP = InstanceData.Poise_AP;
+	APs.Speed_AP = InstanceData.Speed_AP;
 
-	// Set Training
-	Training.HP_Training = InstanceData.HP_Training;
-	Training.Attack_Training = InstanceData.Attack_Training;
-	Training.Defense_Training = InstanceData.Defense_Training;
-	Training.MAGICEV = InstanceData.Magic_Training;
-	Training.POISEEV = InstanceData.Poise_Training;
-	Training.Speed_Training = InstanceData.Speed_Training;
+	// Set EPs
+	EPs.HP_EP = InstanceData.HP_EP;
+	EPs.Attack_EP = InstanceData.Attack_EP;
+	EPs.Defense_EP = InstanceData.Defense_EP;
+	EPs.Magic_EP = InstanceData.Magic_EP;
+	EPs.Poise_EP = InstanceData.Poise_EP;
+	EPs.Speed_EP = InstanceData.Speed_EP;
 
 	// Set level and EXP
 	InstanceBaseStats.Level = InstanceData.Level;
@@ -629,21 +625,21 @@ FGF_CreatureInstanceData AGF_Creature::ExportToInstanceData() const
 	Data.CurrentHP = CurrentStats.CurrentHP;
 	Data.MaxHP = CurrentStats.MaxHP;
 
-	// Potentials
-	Data.HP_Potential = Potentials.HP_Potential;
-	Data.Attack_Potential = Potentials.Attack_Potential;
-	Data.Defense_Potential = Potentials.Defense_Potential;
-	Data.Magic_Potential = Potentials.MAGICIV;
-	Data.Poise_Potential = Potentials.POISEIV;
-	Data.Speed_Potential = Potentials.Speed_Potential;
+	// APs
+	Data.HP_AP = APs.HP_AP;
+	Data.Attack_AP = APs.Attack_AP;
+	Data.Defense_AP = APs.Defense_AP;
+	Data.Magic_AP = APs.Magic_AP;
+	Data.Poise_AP = APs.Poise_AP;
+	Data.Speed_AP = APs.Speed_AP;
 
-	// Training
-	Data.HP_Training = Training.HP_Training;
-	Data.Attack_Training = Training.Attack_Training;
-	Data.Defense_Training = Training.Defense_Training;
-	Data.Magic_Training = Training.MAGICEV;
-	Data.Poise_Training = Training.POISEEV;
-	Data.Speed_Training = Training.Speed_Training;
+	// EPs
+	Data.HP_EP = EPs.HP_EP;
+	Data.Attack_EP = EPs.Attack_EP;
+	Data.Defense_EP = EPs.Defense_EP;
+	Data.Magic_EP = EPs.Magic_EP;
+	Data.Poise_EP = EPs.Poise_EP;
+	Data.Speed_EP = EPs.Speed_EP;
 
 	// Temperament & Gender
 	Data.Temperament = CreatureTemperament;
@@ -703,21 +699,21 @@ void AGF_Creature::RecalculateStatsFromInstanceData(const FGF_CreatureInstanceDa
 
 	InstanceBaseStats.Level = InstanceData.Level;
 
-	// Update Potentials
-	Potentials.HP_Potential = InstanceData.HP_Potential;
-	Potentials.Attack_Potential = InstanceData.Attack_Potential;
-	Potentials.Defense_Potential = InstanceData.Defense_Potential;
-	Potentials.MAGICIV = InstanceData.Magic_Potential;
-	Potentials.POISEIV = InstanceData.Poise_Potential;
-	Potentials.Speed_Potential = InstanceData.Speed_Potential;
+	// Update APs
+	APs.HP_AP = InstanceData.HP_AP;
+	APs.Attack_AP = InstanceData.Attack_AP;
+	APs.Defense_AP = InstanceData.Defense_AP;
+	APs.Magic_AP = InstanceData.Magic_AP;
+	APs.Poise_AP = InstanceData.Poise_AP;
+	APs.Speed_AP = InstanceData.Speed_AP;
 
-	// Update Training
-	Training.HP_Training = InstanceData.HP_Training;
-	Training.Attack_Training = InstanceData.Attack_Training;
-	Training.Defense_Training = InstanceData.Defense_Training;
-	Training.MAGICEV = InstanceData.Magic_Training;
-	Training.POISEEV = InstanceData.Poise_Training;
-	Training.Speed_Training = InstanceData.Speed_Training;
+	// Update EPs
+	EPs.HP_EP = InstanceData.HP_EP;
+	EPs.Attack_EP = InstanceData.Attack_EP;
+	EPs.Defense_EP = InstanceData.Defense_EP;
+	EPs.Magic_EP = InstanceData.Magic_EP;
+	EPs.Poise_EP = InstanceData.Poise_EP;
+	EPs.Speed_EP = InstanceData.Speed_EP;
 
 	// Recalculate all stats
 	RefreshStats();

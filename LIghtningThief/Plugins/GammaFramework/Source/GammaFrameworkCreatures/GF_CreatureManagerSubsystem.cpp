@@ -12,6 +12,7 @@
 #include "GF_BattleBridge.h"
 #include "GF_CatchingLibrary.h"
 #include "GF_CreatureTraits.h"
+#include "GF_CreatureRules.h"
 #include "GF_QuestSubsystem.h"
 #include "Dialogue/GF_DialogueSubsystem.h"
 #include "TimerManager.h"
@@ -558,7 +559,7 @@ void UGF_CreatureManagerSubsystem::BuildSpeciesIndex() const
 	const FName BattleIdleTag = UGF_CreatureSpeciesData::BattleIdleAnimationTagName;
 	const FName EvolutionTargetsTag = UGF_CreatureSpeciesData::EvolutionTargetsTagName;
 
-	// Enum tags are stored by name ("Fire" or "EGF_Element::Ember" depending on how
+	// Enum tags are stored by name ("Fire" or "EGF_Element::Fire" depending on how
 	// the value was written), so try both spellings before giving up.
 	const UEnum* TypeEnum = StaticEnum<EGF_Element>();
 	auto ParseType = [TypeEnum](const FString& Raw) -> EGF_Element
@@ -2275,8 +2276,8 @@ bool UGF_CreatureManagerSubsystem::UpdatePartyFromActor(AGF_Creature* CreatureAc
 	// Creature the player started the battle with.
 	//
 	// UpdatePartyCreatureBattleData() is the same write the END of a battle already uses, and
-	// it exists precisely because of this. It takes the battle-volatile fields (HP, status,
-	// Training) and preserves Level, EXP, Uses and Skills. Both paths write the party from a battle
+	// it exists precisely because of this. It takes the battle-volatile fields (HP, status)
+	// and preserves Level, EXP, Uses and Skills. Both paths write the party from a battle
 	// actor, so both have to merge -- hardening only one of them left this door open.
 
 	bool bSuccess = VaultSystem->UpdatePartyCreatureBattleData(PartyIndex, UpdatedData);
@@ -3726,7 +3727,7 @@ bool UGF_CreatureManagerSubsystem::GiveEXP(int32 PartyIndex, int32 ExpAmount, bo
 
 		float OldMaxHPBeforeCalc = Data.MaxHP;
 
-		Data.MaxHP = FMath::FloorToInt(((2.0f * Species->BaseStats.HP + Data.HP_Potential + (Data.HP_Training / 4.0f)) * Data.Level / 100.0f) + Data.Level + 10);
+		Data.MaxHP = FMath::FloorToInt(((2.0f * Species->BaseStats.HP + Data.HP_AP + Data.HP_EP) * Data.Level / 100.0f) + Data.Level + 10);
 
 		// Husk: see UGF_CreatureSpeciesData::HasFixedOneHP.
 		if (Species->HasFixedOneHP())
@@ -3742,9 +3743,9 @@ bool UGF_CreatureManagerSubsystem::GiveEXP(int32 PartyIndex, int32 ExpAmount, bo
 
 		UE_LOG(LogTemp, Warning, TEXT("      Base HP: %d"), Species->BaseStats.HP);
 
-		UE_LOG(LogTemp, Warning, TEXT("      HP Potential: %d"), Data.HP_Potential);
+		UE_LOG(LogTemp, Warning, TEXT("      HP AP: %d"), Data.HP_AP);
 
-		UE_LOG(LogTemp, Warning, TEXT("      HP TrainingValue: %d"), Data.HP_Training);
+		UE_LOG(LogTemp, Warning, TEXT("      HP EP: %d"), Data.HP_EP);
 
 		UE_LOG(LogTemp, Warning, TEXT("      New Level: %d"), Data.Level);
 
@@ -3942,6 +3943,31 @@ int32 UGF_CreatureManagerSubsystem::AwardEXPFromBattle(const FGF_CreatureInstanc
 	const float EXPMultiplier = Settings ? Settings->GetEXPMultiplier() : 1.0f;
 	const bool  bCapEnforced  = Settings ? Settings->IsLevelCapEnforced() : false;
 	const int32 LevelCap      = Settings ? Settings->GetLevelCap() : 100;
+
+	// Affinity grows from battling, not from EXP, so it is handed out first and to
+	// every battler still standing -- a level 100 or level-capped battler that earns
+	// no EXP below still earns affinity here. GiveEXP re-reads the party, so the
+	// raised APs feed straight into any level-up stat recalculation.
+	const int32 AffinityGain = GetDefault<UGF_CreatureRulesSettings>()->AffinityPerFoeDefeated;
+	if (AffinityGain > 0)
+	{
+		for (const int32 BattlerIndex : BattlerIndices)
+		{
+			FGF_CreatureInstanceData Battler;
+			if (!VaultSystem->GetPartyCreature(BattlerIndex, Battler) || Battler.bIsDowned || Battler.IsEgg()
+				|| Battler.IsMaxAffinity())
+			{
+				continue;
+			}
+
+			Battler.AddAffinity(AffinityGain);
+			RecalculateStats(Battler);
+			VaultSystem->UpdatePartyCreature(BattlerIndex, Battler);
+
+			UE_LOG(LogTemp, Log, TEXT(" %s: affinity +%d (now %d)"),
+				*Battler.GetDisplayName().ToString(), AffinityGain, Battler.Affinity);
+		}
+	}
 
 	// EXP Share: battlers always get their full share; the rest get EXPShareRatio
 	// of it, or nothing at all when the option is off.
@@ -5713,7 +5739,7 @@ bool UGF_CreatureManagerSubsystem::TeachSkillToPartyCreature(int32 PartyIndex, T
 		Data.MaxUses[ReplaceSlotIndex] = NewMaxUses;
 		Data.CurrentUses[ReplaceSlotIndex] = NewMaxUses;
 	}
-	else if (Data.Skills.Num() < 4)
+	else if (Data.CanLearnMoreSkills())
 	{
 		// No existing move in that slot and there's room — append into the empty slot.
 		Data.Skills.Add(Skill);
@@ -5921,26 +5947,22 @@ int32 UGF_CreatureManagerSubsystem::ApplyHealingItem(UGF_ItemData* Item, FGF_Cre
 }
 
 //--------------------
-// VITAMINS (TrainingValue BOOST ITEMS)
+// VITAMINS (disabled -- see CalculateVitaminGain)
 //--------------------
 
 namespace
 {
-	// classic TrainingValue rules
-	constexpr int32 VitaminTrainingCap = 100;  // Vitamins stop working once the stat hits 100 Training
-	constexpr int32 TotalTrainingCap = 510;    // Total Training across all six stats can never exceed 510
-
 	// Member pointer so the same lookup works for const and non-const Creature
 	int32 FGF_CreatureInstanceData::* GetTrainingMemberForVitamin(EGF_VitaminStat Stat)
 	{
 		switch (Stat)
 		{
-		case EGF_VitaminStat::HP:             return &FGF_CreatureInstanceData::HP_Training;
-		case EGF_VitaminStat::Attack:         return &FGF_CreatureInstanceData::Attack_Training;
-		case EGF_VitaminStat::Defense:        return &FGF_CreatureInstanceData::Defense_Training;
-		case EGF_VitaminStat::Magic:  return &FGF_CreatureInstanceData::Magic_Training;
-		case EGF_VitaminStat::Poise: return &FGF_CreatureInstanceData::Poise_Training;
-		case EGF_VitaminStat::Speed:          return &FGF_CreatureInstanceData::Speed_Training;
+		case EGF_VitaminStat::HP:             return &FGF_CreatureInstanceData::HP_EP;
+		case EGF_VitaminStat::Attack:         return &FGF_CreatureInstanceData::Attack_EP;
+		case EGF_VitaminStat::Defense:        return &FGF_CreatureInstanceData::Defense_EP;
+		case EGF_VitaminStat::Magic:  return &FGF_CreatureInstanceData::Magic_EP;
+		case EGF_VitaminStat::Poise: return &FGF_CreatureInstanceData::Poise_EP;
+		case EGF_VitaminStat::Speed:          return &FGF_CreatureInstanceData::Speed_EP;
 		}
 		return nullptr;
 	}
@@ -5953,19 +5975,12 @@ int32 UGF_CreatureManagerSubsystem::CalculateVitaminGain(UGF_ItemData* Item, con
 		return 0;
 	}
 
-	int32 FGF_CreatureInstanceData::* TrainingMember = GetTrainingMemberForVitamin(Item->VitaminStat);
-	if (!TrainingMember)
-	{
-		return 0;
-	}
-
-	const int32 TotalTraining = Creature.HP_Training + Creature.Attack_Training + Creature.Defense_Training
-		+ Creature.Magic_Training + Creature.Poise_Training + Creature.Speed_Training;
-
-	const int32 StatRoom = VitaminTrainingCap - Creature.*TrainingMember;
-	const int32 TotalRoom = TotalTrainingCap - TotalTraining;
-
-	return FMath::Max(0, FMath::Min3(Item->TrainingBoostAmount, StatRoom, TotalRoom));
+	// Dokimon: EPs are earned one per level and freely re-allocated, and their total
+	// is pinned to the level (FGF_CreatureInstanceData::GetEPBudget). A vitamin adding
+	// points on top would break that, so vitamins currently have no effect -- the
+	// item use reports "It won't have any effect." Give them a new job before
+	// putting any in the game.
+	return 0;
 }
 
 int32 UGF_CreatureManagerSubsystem::ApplyVitaminItem(UGF_ItemData* Item, FGF_CreatureInstanceData& Creature, bool bConsumeItem)
@@ -5989,10 +6004,10 @@ int32 UGF_CreatureManagerSubsystem::ApplyVitaminItem(UGF_ItemData* Item, FGF_Cre
 			const float OldMaxHP = Creature.MaxHP;
 
 			Creature.MaxHP = FMath::FloorToInt(
-				((2.0f * Species->BaseStats.HP + Creature.HP_Potential + FMath::FloorToInt(Creature.HP_Training / 4.0f)) * Creature.Level) / 100.0f
+				((2.0f * Species->BaseStats.HP + Creature.HP_AP + Creature.HP_EP) * Creature.Level) / 100.0f
 			) + Creature.Level + 10;
 
-			// Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. HP Up still banks the TrainingValue
+			// Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. HP Up still banks the EP
 			// (so the value is there if it is ever traded into something else), it just
 			// buys no HP.
 			if (Species->HasFixedOneHP())
@@ -6020,7 +6035,7 @@ int32 UGF_CreatureManagerSubsystem::ApplyVitaminItem(UGF_ItemData* Item, FGF_Cre
 
 	MarkDirty();
 
-	UE_LOG(LogTemp, Log, TEXT("ApplyVitaminItem: [%s] added %d Training to %s (stat %d, now %d)."),
+	UE_LOG(LogTemp, Log, TEXT("ApplyVitaminItem: [%s] added %d EP to %s (stat %d, now %d)."),
 		*Item->ItemName.ToString(), ActualGain, *Creature.GetDisplayName().ToString(),
 		static_cast<int32>(Item->VitaminStat), Creature.*TrainingMember);
 
@@ -6882,7 +6897,7 @@ void UGF_CreatureManagerSubsystem::EvolveCreature(FGF_CreatureInstanceData& Crea
         return;
     }
 
-    // No need to store Potentials/Training separately - they're already in the struct!
+    // No need to store APs/EPs separately - they're already in the struct!
     // Just preserve experience
     int32 CurrentExp = Creature.CurrentEXP;
 
@@ -6977,8 +6992,10 @@ bool UGF_CreatureManagerSubsystem::CheckForEvolution(const FGF_CreatureInstanceD
                 break;
             case EGF_EvolutionTrigger::Item:
             case EGF_EvolutionTrigger::Trade:
-            case EGF_EvolutionTrigger::Bond:
                 bMeetsBasicRequirements = true;
+                break;
+            case EGF_EvolutionTrigger::Affinity:
+                bMeetsBasicRequirements = Creature.Affinity >= Evolution.RequiredAffinity;
                 break;
         }
 
@@ -7020,14 +7037,14 @@ bool UGF_CreatureManagerSubsystem::MeetsEvolutionCondition(const FGF_CreatureIns
 
         case EGF_EvolutionCondition::TimeDay:
         {
-            // Kithling → Solkit (daytime + bond)
+            // Kithling → Solkit (daytime + affinity)
             // TODO: Implement time of day system
             return true; // Placeholder
         }
 
         case EGF_EvolutionCondition::TimeNight:
         {
-            // Kithling → Umbrakit (nighttime + bond)
+            // Kithling → Umbrakit (nighttime + affinity)
             // TODO: Implement time of day system
             return false; // Placeholder
         }
@@ -7145,8 +7162,10 @@ FName UGF_CreatureManagerSubsystem::GetEvolutionForTrigger(const FGF_CreatureIns
                 break;
             case EGF_EvolutionTrigger::Item:
             case EGF_EvolutionTrigger::Trade:
-            case EGF_EvolutionTrigger::Bond:
                 bMeetsBasicRequirements = true;
+                break;
+            case EGF_EvolutionTrigger::Affinity:
+                bMeetsBasicRequirements = Creature.Affinity >= Evolution.RequiredAffinity;
                 break;
         }
 
@@ -7248,7 +7267,7 @@ bool UGF_CreatureManagerSubsystem::CreateHuskFromSkitterling(int32 SourcePartyIn
     }
 
     // The whole point of this function: Husk is a COPY. Everything the copy
-    // constructor carries (Skills, Uses, Potentials, Training, Temperament, EXP, OT, met memo, bond,
+    // constructor carries (Skills, Uses, APs, EPs, Temperament, EXP, OT, met memo, affinity,
     // shininess) is inherited, and only what follows is deliberately changed.
     FGF_CreatureInstanceData Husk = VaultSystem->Party[SourcePartyIndex];
 
@@ -7389,7 +7408,7 @@ void UGF_CreatureManagerSubsystem::ExecuteTrade(int32 PartyIndex, const FGF_NPCT
         ? PlayerCreature.Level
         : TradeOffer.OfferedLevel;
 
-    // Create NPC's Creature using existing function (rolls fresh Potentials/nature; stats
+    // Create NPC's Creature using existing function (rolls fresh APs/nature; stats
     // are recalculated from ResultLevel when the Creature is next spawned)
     FGF_CreatureInstanceData NPCCreature = CreateCreature(OfferedSpeciesData, ResultLevel);
 
@@ -7475,9 +7494,9 @@ void UGF_CreatureManagerSubsystem::RecalculateStats(FGF_CreatureInstanceData& Cr
     const FGF_CreatureBaseStats& BaseStats = SpeciesData->BaseStats;
 
     // Calculate HP using Creature formula
-    // HP = floor(((2 * Base + Potential + floor(TrainingValue/4)) * Level) / 100) + Level + 10
+    // HP = floor(((2 * Base + AP + EP) * Level) / 100) + Level + 10
     int32 HPStat = FMath::FloorToInt(
-        ((2 * BaseStats.HP + Creature.HP_Potential + FMath::FloorToInt(Creature.HP_Training / 4.0f)) * Creature.Level) / 100.0f
+        ((2 * BaseStats.HP + Creature.HP_AP + Creature.HP_EP) * Creature.Level) / 100.0f
     ) + Creature.Level + 10;
 
     // Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. Every caller of this function
@@ -7499,6 +7518,56 @@ void UGF_CreatureManagerSubsystem::RecalculateStats(FGF_CreatureInstanceData& Cr
 
 	UE_LOG(LogTemp, Log, TEXT("Recalculated stats for %s: HP=%d"),
         *Creature.GetDisplayName().ToString(), HPStat);
+}
+
+int32 UGF_CreatureManagerSubsystem::AllocatePartyEP(int32 PartyIndex, EGF_CreatureStat Stat, int32 Delta)
+{
+    FGF_CreatureInstanceData Data;
+    if (!VaultSystem || !VaultSystem->GetPartyCreature(PartyIndex, Data) || Data.IsEgg())
+    {
+        return 0;
+    }
+
+    const int32 Moved = Data.AllocateEP(Stat, Delta);
+    if (Moved == 0)
+    {
+        return 0;
+    }
+
+    RecalculateStats(Data);
+    VaultSystem->UpdatePartyCreature(PartyIndex, Data);
+    MarkDirty();
+    return Moved;
+}
+
+bool UGF_CreatureManagerSubsystem::ResetPartyEPs(int32 PartyIndex)
+{
+    FGF_CreatureInstanceData Data;
+    if (!VaultSystem || !VaultSystem->GetPartyCreature(PartyIndex, Data) || Data.IsEgg())
+    {
+        return false;
+    }
+
+    Data.ResetEPs();
+    RecalculateStats(Data);
+    VaultSystem->UpdatePartyCreature(PartyIndex, Data);
+    MarkDirty();
+    return true;
+}
+
+bool UGF_CreatureManagerSubsystem::AddPartyAffinity(int32 PartyIndex, int32 Delta)
+{
+    FGF_CreatureInstanceData Data;
+    if (!VaultSystem || !VaultSystem->GetPartyCreature(PartyIndex, Data) || Data.IsEgg())
+    {
+        return false;
+    }
+
+    Data.AddAffinity(Delta);
+    RecalculateStats(Data);
+    VaultSystem->UpdatePartyCreature(PartyIndex, Data);
+    MarkDirty();
+    return true;
 }
 
 int32 UGF_CreatureManagerSubsystem::GenerateNPCTamerID() const
