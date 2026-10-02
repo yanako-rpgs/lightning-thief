@@ -15,41 +15,33 @@
  * a converter library whose entire job was translating between two identical
  * copies of it. All eight collapse here, and the converter is gone.
  *
- * The roster is "Elemental Arcana": sixteen elements plus Neutral. Only Ghost
- * and Dark remain merged, into Umbra. See GetMatchup for the chart's structure.
+ * The roster is the thirteen Dokimon elements from the Lightning Thief GDD.
+ * Neutral is not one of them: it is kept only as the element of plain, typeless
+ * skills (Clobber, Cut, Protect...), and no creature should be given it.
+ *
+ * The chart is a classic-chart placeholder for now. See GetMatchup.
  */
 UENUM(BlueprintType)
 enum class EGF_Element : uint8
 {
 	None      UMETA(DisplayName = "None"),
 
+	// Typeless skills only.
 	Neutral   UMETA(DisplayName = "Neutral"),
 
-	// Primal cycle: Ember > Verdant > Tide > Ember
-	Ember     UMETA(DisplayName = "Ember"),
-	Tide      UMETA(DisplayName = "Tide"),
-	Verdant   UMETA(DisplayName = "Verdant"),
-
-	// Kinetic cycle: Gale > Terra > Spark > Gale
-	Gale      UMETA(DisplayName = "Gale"),
-	Terra     UMETA(DisplayName = "Terra"),
-	Spark     UMETA(DisplayName = "Spark"),
-
-	// Attrition cycle: Sinew > Ferrous > Chitin > Sinew
-	Sinew     UMETA(DisplayName = "Sinew"),
-	Ferrous   UMETA(DisplayName = "Ferrous"),
-	Chitin    UMETA(DisplayName = "Chitin"),
-
-	Stone     UMETA(DisplayName = "Stone"),
-	Frost     UMETA(DisplayName = "Frost"),
-	Venom     UMETA(DisplayName = "Venom"),
-
-	// Opposed pair: mutually 2x
-	Umbra     UMETA(DisplayName = "Umbra"),
-	Lumen     UMETA(DisplayName = "Lumen"),
-
-	Aether    UMETA(DisplayName = "Aether"),
-	Wyrm      UMETA(DisplayName = "Wyrm"),
+	Fire      UMETA(DisplayName = "Fire"),
+	Grass     UMETA(DisplayName = "Grass"),
+	Water     UMETA(DisplayName = "Water"),
+	Electric  UMETA(DisplayName = "Electric"),
+	Dark      UMETA(DisplayName = "Dark"),
+	Light     UMETA(DisplayName = "Light"),
+	Flying    UMETA(DisplayName = "Flying"),
+	Fight     UMETA(DisplayName = "Fight"),
+	Poison    UMETA(DisplayName = "Poison"),
+	Dragon    UMETA(DisplayName = "Dragon"),
+	Fairy     UMETA(DisplayName = "Fairy"),
+	Ghost     UMETA(DisplayName = "Ghost"),
+	Ice       UMETA(DisplayName = "Ice"),
 
 	MAX       UMETA(Hidden)
 };
@@ -126,7 +118,7 @@ public:
 
 	/**
 	 * Uppercase token used to build per-element asset names, e.g.
-	 * SPR_EMBER_icon_EGG_Sprite_0. Returns "000" for None and Neutral, which is
+	 * SPR_FIRE_icon_EGG_Sprite_0. Returns "000" for None and Neutral, which is
 	 * the plain/fallback sheet.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Gamma Framework|Elements")

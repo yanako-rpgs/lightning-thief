@@ -8,32 +8,12 @@ namespace
 	//   x0.5 resisted
 	//   x0   immune
 	//
-	// The structure, rather than a table of arbitrary numbers:
+	// Placeholder chart: the classic (Gen 6+) chart cut down to the Dokimon
+	// elements, until Lightning Thief has its own. Fight plays Fighting, and
+	// Neutral (typeless skills) plays Normal.
 	//
-	//   Primal cycle      Ember > Verdant > Tide  > Ember
-	//   Kinetic cycle     Gale  > Terra   > Spark > Gale
-	//   Attrition cycle   Sinew > Ferrous > Chitin > Sinew
-	//                     (muscle bends metal, metal crushes carapace, the
-	//                      swarm outlasts the fighter)
-	//   Opposed pair      Lumen <-> Umbra, mutually x2
-	//   Wyrm              beats only itself, and Lumen is flatly immune to it --
-	//                     a narrow, high-power element rather than a broad one
-	//   Terra / Stone     Terra is soil: it grounds Spark and cannot touch Gale.
-	//                     Stone is hard mineral: it knocks Gale out of the sky.
-	//   Ferrous rule      Ferrous never both resists an element AND hits it x2.
-	//                     It resisted 11 of 17 before that rule, which made it the
-	//                     default correct answer in any defensive slot. Chitin,
-	//                     Frost, Stone and Lumen are the four it beats offensively,
-	//                     so they now do neutral damage back. Seven resistances
-	//                     left -- still clearly the armoured element, no longer
-	//                     strictly the best one.
-	//
-	// Five immunities, each doing a specific job:
-	//   Neutral -> Umbra   (nothing mundane touches a shade)
-	//   Terra   -> Gale    (no ground to throw)
-	//   Spark   -> Terra   (grounded)
-	//   Venom   -> Ferrous (nothing to poison)
-	//   Wyrm    -> Lumen   (the one hard counter to the strongest element)
+	// Light has no classic counterpart, so it has no row and appears in no
+	// column -- it deals and takes neutral damage from everything for now.
 	struct FMatchup
 	{
 		EGF_Element Defending;
@@ -45,105 +25,68 @@ namespace
 	{
 		static const TMap<EGF_Element, TArray<FMatchup>> Table = {
 			{ EGF_Element::Neutral, {
-				{ EGF_Element::Ferrous, 0.5f }, { EGF_Element::Stone, 0.5f },
-				{ EGF_Element::Umbra, 0.0f },
+				{ EGF_Element::Ghost, 0.0f },
 			}},
-			{ EGF_Element::Sinew, {
-				{ EGF_Element::Neutral, 2.0f }, { EGF_Element::Stone, 2.0f },
-				{ EGF_Element::Ferrous, 2.0f }, { EGF_Element::Frost, 2.0f },
-				{ EGF_Element::Umbra, 2.0f },
-				{ EGF_Element::Gale, 0.5f },    { EGF_Element::Venom, 0.5f },
-				{ EGF_Element::Aether, 0.5f },  { EGF_Element::Lumen, 0.5f },
+			{ EGF_Element::Fire, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Ice, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Water, 0.5f },
+				{ EGF_Element::Dragon, 0.5f },
 			}},
-			{ EGF_Element::Ember, {
-				{ EGF_Element::Verdant, 2.0f }, { EGF_Element::Frost, 2.0f },
-				{ EGF_Element::Ferrous, 2.0f }, { EGF_Element::Chitin, 2.0f },
-				{ EGF_Element::Tide, 0.5f },    { EGF_Element::Stone, 0.5f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Wyrm, 0.5f },
+			{ EGF_Element::Water, {
+				{ EGF_Element::Fire, 2.0f },
+				{ EGF_Element::Water, 0.5f },  { EGF_Element::Grass, 0.5f },
+				{ EGF_Element::Dragon, 0.5f },
 			}},
-			{ EGF_Element::Tide, {
-				{ EGF_Element::Ember, 2.0f },   { EGF_Element::Stone, 2.0f },
-				{ EGF_Element::Terra, 2.0f },
-				{ EGF_Element::Verdant, 0.5f }, { EGF_Element::Tide, 0.5f },
-				{ EGF_Element::Spark, 0.5f },   { EGF_Element::Wyrm, 0.5f },
+			{ EGF_Element::Electric, {
+				{ EGF_Element::Water, 2.0f },  { EGF_Element::Flying, 2.0f },
+				{ EGF_Element::Electric, 0.5f }, { EGF_Element::Grass, 0.5f },
+				{ EGF_Element::Dragon, 0.5f },
 			}},
-			{ EGF_Element::Verdant, {
-				{ EGF_Element::Tide, 2.0f },    { EGF_Element::Stone, 2.0f },
-				{ EGF_Element::Terra, 2.0f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Gale, 0.5f },
-				{ EGF_Element::Venom, 0.5f },   { EGF_Element::Chitin, 0.5f },
-				{ EGF_Element::Verdant, 0.5f }, { EGF_Element::Ferrous, 0.5f },
-				{ EGF_Element::Wyrm, 0.5f },
+			{ EGF_Element::Grass, {
+				{ EGF_Element::Water, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Grass, 0.5f },
+				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Flying, 0.5f },
+				{ EGF_Element::Dragon, 0.5f },
 			}},
-			{ EGF_Element::Chitin, {
-				{ EGF_Element::Sinew, 2.0f },   { EGF_Element::Verdant, 2.0f },
-				{ EGF_Element::Aether, 2.0f },  { EGF_Element::Umbra, 2.0f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Gale, 0.5f },
-				{ EGF_Element::Venom, 0.5f },
-				{ EGF_Element::Lumen, 0.5f },   { EGF_Element::Stone, 0.5f },
+			{ EGF_Element::Ice, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Flying, 2.0f },
+				{ EGF_Element::Dragon, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Water, 0.5f },
+				{ EGF_Element::Ice, 0.5f },
 			}},
-			{ EGF_Element::Gale, {
-				{ EGF_Element::Terra, 2.0f },   { EGF_Element::Verdant, 2.0f },
-				{ EGF_Element::Sinew, 2.0f },   { EGF_Element::Chitin, 2.0f },
-				{ EGF_Element::Ferrous, 0.5f }, { EGF_Element::Spark, 0.5f },
-				{ EGF_Element::Stone, 0.5f },
+			{ EGF_Element::Fight, {
+				{ EGF_Element::Neutral, 2.0f }, { EGF_Element::Ice, 2.0f },
+				{ EGF_Element::Dark, 2.0f },
+				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Flying, 0.5f },
+				{ EGF_Element::Fairy, 0.5f },
+				{ EGF_Element::Ghost, 0.0f },
 			}},
-			{ EGF_Element::Terra, {
-				{ EGF_Element::Spark, 2.0f },   { EGF_Element::Ember, 2.0f },
-				{ EGF_Element::Venom, 2.0f },   { EGF_Element::Stone, 2.0f },
-				{ EGF_Element::Ferrous, 2.0f },
-				{ EGF_Element::Verdant, 0.5f }, { EGF_Element::Chitin, 0.5f },
-				{ EGF_Element::Gale, 0.0f },    // no ground to throw
+			{ EGF_Element::Poison, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Fairy, 2.0f },
+				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Ghost, 0.5f },
 			}},
-			{ EGF_Element::Stone, {
-				{ EGF_Element::Ember, 2.0f },   { EGF_Element::Frost, 2.0f },
-				{ EGF_Element::Gale, 2.0f },    { EGF_Element::Chitin, 2.0f },
-				{ EGF_Element::Sinew, 0.5f },   { EGF_Element::Terra, 0.5f },
+			{ EGF_Element::Flying, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Fight, 2.0f },
+				{ EGF_Element::Electric, 0.5f },
 			}},
-			{ EGF_Element::Spark, {
-				{ EGF_Element::Gale, 2.0f },    { EGF_Element::Tide, 2.0f },
-				{ EGF_Element::Ferrous, 2.0f },
-				{ EGF_Element::Verdant, 0.5f }, { EGF_Element::Spark, 0.5f },
-				{ EGF_Element::Wyrm, 0.5f },
-				{ EGF_Element::Terra, 0.0f },   // grounded
+			{ EGF_Element::Ghost, {
+				{ EGF_Element::Ghost, 2.0f },
+				{ EGF_Element::Dark, 0.5f },
+				{ EGF_Element::Neutral, 0.0f },
 			}},
-			{ EGF_Element::Ferrous, {
-				{ EGF_Element::Chitin, 2.0f },  { EGF_Element::Frost, 2.0f },
-				{ EGF_Element::Stone, 2.0f },   { EGF_Element::Lumen, 2.0f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Tide, 0.5f },
-				{ EGF_Element::Spark, 0.5f },   { EGF_Element::Ferrous, 0.5f },
+			{ EGF_Element::Dragon, {
+				{ EGF_Element::Dragon, 2.0f },
+				{ EGF_Element::Fairy, 0.0f },
 			}},
-			{ EGF_Element::Frost, {
-				{ EGF_Element::Verdant, 2.0f }, { EGF_Element::Gale, 2.0f },
-				{ EGF_Element::Terra, 2.0f },   { EGF_Element::Wyrm, 2.0f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Tide, 0.5f },
-				{ EGF_Element::Frost, 0.5f },
+			{ EGF_Element::Dark, {
+				{ EGF_Element::Ghost, 2.0f },
+				{ EGF_Element::Fight, 0.5f },  { EGF_Element::Dark, 0.5f },
+				{ EGF_Element::Fairy, 0.5f },
 			}},
-			{ EGF_Element::Venom, {
-				{ EGF_Element::Verdant, 2.0f }, { EGF_Element::Lumen, 2.0f },
-				{ EGF_Element::Terra, 0.5f },   { EGF_Element::Stone, 0.5f },
-				{ EGF_Element::Venom, 0.5f },   { EGF_Element::Umbra, 0.5f },
-				{ EGF_Element::Ferrous, 0.0f }, // nothing to poison
-			}},
-			{ EGF_Element::Umbra, {
-				{ EGF_Element::Aether, 2.0f },  { EGF_Element::Lumen, 2.0f },
-				{ EGF_Element::Umbra, 0.5f },   { EGF_Element::Sinew, 0.5f },
-			}},
-			{ EGF_Element::Lumen, {
-				{ EGF_Element::Umbra, 2.0f },   { EGF_Element::Sinew, 2.0f },
-				{ EGF_Element::Wyrm, 2.0f },
-				{ EGF_Element::Ember, 0.5f },   { EGF_Element::Venom, 0.5f },
-				{ EGF_Element::Lumen, 0.5f },
-			}},
-			{ EGF_Element::Aether, {
-				{ EGF_Element::Sinew, 2.0f },   { EGF_Element::Venom, 2.0f },
-				{ EGF_Element::Aether, 0.5f },  { EGF_Element::Ferrous, 0.5f },
-				{ EGF_Element::Umbra, 0.5f },
-			}},
-			{ EGF_Element::Wyrm, {
-				{ EGF_Element::Wyrm, 2.0f },
-				{ EGF_Element::Ferrous, 0.5f }, { EGF_Element::Stone, 0.5f },
-				{ EGF_Element::Lumen, 0.0f },   // the hard counter
+			{ EGF_Element::Fairy, {
+				{ EGF_Element::Fight, 2.0f },  { EGF_Element::Dragon, 2.0f },
+				{ EGF_Element::Dark, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Poison, 0.5f },
 			}},
 		};
 		return Table;
@@ -188,24 +131,21 @@ FText UGF_ElementLibrary::GetElementDisplayName(EGF_Element Element)
 	// packaged game. Every user-facing element label has to be spelled out here.
 	switch (Element)
 	{
-		case EGF_Element::Neutral: return NSLOCTEXT("GammaFramework", "Element_Neutral", "Neutral");
-		case EGF_Element::Sinew:   return NSLOCTEXT("GammaFramework", "Element_Sinew",   "Sinew");
-		case EGF_Element::Ember:   return NSLOCTEXT("GammaFramework", "Element_Ember",   "Ember");
-		case EGF_Element::Tide:    return NSLOCTEXT("GammaFramework", "Element_Tide",    "Tide");
-		case EGF_Element::Verdant: return NSLOCTEXT("GammaFramework", "Element_Verdant", "Verdant");
-		case EGF_Element::Chitin:  return NSLOCTEXT("GammaFramework", "Element_Chitin",  "Chitin");
-		case EGF_Element::Gale:    return NSLOCTEXT("GammaFramework", "Element_Gale",    "Gale");
-		case EGF_Element::Terra:   return NSLOCTEXT("GammaFramework", "Element_Terra",   "Terra");
-		case EGF_Element::Stone:   return NSLOCTEXT("GammaFramework", "Element_Stone",   "Stone");
-		case EGF_Element::Spark:   return NSLOCTEXT("GammaFramework", "Element_Spark",   "Spark");
-		case EGF_Element::Ferrous: return NSLOCTEXT("GammaFramework", "Element_Ferrous", "Ferrous");
-		case EGF_Element::Frost:   return NSLOCTEXT("GammaFramework", "Element_Frost",   "Frost");
-		case EGF_Element::Venom:   return NSLOCTEXT("GammaFramework", "Element_Venom",   "Venom");
-		case EGF_Element::Umbra:   return NSLOCTEXT("GammaFramework", "Element_Umbra",   "Umbra");
-		case EGF_Element::Lumen:   return NSLOCTEXT("GammaFramework", "Element_Lumen",   "Lumen");
-		case EGF_Element::Aether:  return NSLOCTEXT("GammaFramework", "Element_Aether",  "Aether");
-		case EGF_Element::Wyrm:    return NSLOCTEXT("GammaFramework", "Element_Wyrm",    "Wyrm");
-		default:                   return NSLOCTEXT("GammaFramework", "Element_None",    "None");
+		case EGF_Element::Neutral:  return NSLOCTEXT("GammaFramework", "Element_Neutral",  "Neutral");
+		case EGF_Element::Fire:     return NSLOCTEXT("GammaFramework", "Element_Fire",     "Fire");
+		case EGF_Element::Grass:    return NSLOCTEXT("GammaFramework", "Element_Grass",    "Grass");
+		case EGF_Element::Water:    return NSLOCTEXT("GammaFramework", "Element_Water",    "Water");
+		case EGF_Element::Electric: return NSLOCTEXT("GammaFramework", "Element_Electric", "Electric");
+		case EGF_Element::Dark:     return NSLOCTEXT("GammaFramework", "Element_Dark",     "Dark");
+		case EGF_Element::Light:    return NSLOCTEXT("GammaFramework", "Element_Light",    "Light");
+		case EGF_Element::Flying:   return NSLOCTEXT("GammaFramework", "Element_Flying",   "Flying");
+		case EGF_Element::Fight:    return NSLOCTEXT("GammaFramework", "Element_Fight",    "Fight");
+		case EGF_Element::Poison:   return NSLOCTEXT("GammaFramework", "Element_Poison",   "Poison");
+		case EGF_Element::Dragon:   return NSLOCTEXT("GammaFramework", "Element_Dragon",   "Dragon");
+		case EGF_Element::Fairy:    return NSLOCTEXT("GammaFramework", "Element_Fairy",    "Fairy");
+		case EGF_Element::Ghost:    return NSLOCTEXT("GammaFramework", "Element_Ghost",    "Ghost");
+		case EGF_Element::Ice:      return NSLOCTEXT("GammaFramework", "Element_Ice",      "Ice");
+		default:                    return NSLOCTEXT("GammaFramework", "Element_None",     "None");
 	}
 }
 
@@ -213,27 +153,23 @@ FLinearColor UGF_ElementLibrary::GetElementColor(EGF_Element Element)
 {
 	switch (Element)
 	{
-		case EGF_Element::Neutral: return FLinearColor(0.66f, 0.66f, 0.46f, 1.f);
-		case EGF_Element::Sinew:   return FLinearColor(0.75f, 0.33f, 0.25f, 1.f);
-		case EGF_Element::Ember:   return FLinearColor(0.94f, 0.38f, 0.05f, 1.f);
-		case EGF_Element::Tide:    return FLinearColor(0.24f, 0.53f, 0.92f, 1.f);
-		case EGF_Element::Verdant: return FLinearColor(0.34f, 0.75f, 0.29f, 1.f);
-		case EGF_Element::Chitin:  return FLinearColor(0.65f, 0.73f, 0.18f, 1.f);
-		case EGF_Element::Gale:    return FLinearColor(0.66f, 0.79f, 0.96f, 1.f);
-		// Terra and Stone are both earthy, so they are pulled apart deliberately:
-		// Terra warm sand, Stone cool grey. Two browns would be unreadable as
-		// adjacent type badges.
-		case EGF_Element::Terra:   return FLinearColor(0.82f, 0.66f, 0.34f, 1.f);
-		case EGF_Element::Stone:   return FLinearColor(0.58f, 0.55f, 0.50f, 1.f);
-		case EGF_Element::Spark:   return FLinearColor(0.98f, 0.82f, 0.18f, 1.f);
-		case EGF_Element::Ferrous: return FLinearColor(0.60f, 0.64f, 0.70f, 1.f);
-		case EGF_Element::Frost:   return FLinearColor(0.60f, 0.89f, 0.90f, 1.f);
-		case EGF_Element::Venom:   return FLinearColor(0.64f, 0.31f, 0.65f, 1.f);
-		case EGF_Element::Umbra:   return FLinearColor(0.27f, 0.22f, 0.30f, 1.f);
-		case EGF_Element::Lumen:   return FLinearColor(0.96f, 0.80f, 0.86f, 1.f);
-		case EGF_Element::Aether:  return FLinearColor(0.78f, 0.36f, 0.72f, 1.f);
-		case EGF_Element::Wyrm:    return FLinearColor(0.42f, 0.36f, 0.84f, 1.f);
-		default:                   return FLinearColor(0.50f, 0.50f, 0.50f, 1.f);
+		case EGF_Element::Neutral:  return FLinearColor(0.66f, 0.66f, 0.46f, 1.f);
+		case EGF_Element::Fire:     return FLinearColor(0.94f, 0.38f, 0.05f, 1.f);
+		case EGF_Element::Grass:    return FLinearColor(0.34f, 0.75f, 0.29f, 1.f);
+		case EGF_Element::Water:    return FLinearColor(0.24f, 0.53f, 0.92f, 1.f);
+		case EGF_Element::Electric: return FLinearColor(0.98f, 0.82f, 0.18f, 1.f);
+		case EGF_Element::Dark:     return FLinearColor(0.27f, 0.22f, 0.30f, 1.f);
+		// Light and Electric are both yellow, so Light is pulled toward cream to
+		// keep the two badges readable side by side.
+		case EGF_Element::Light:    return FLinearColor(0.98f, 0.94f, 0.72f, 1.f);
+		case EGF_Element::Flying:   return FLinearColor(0.66f, 0.79f, 0.96f, 1.f);
+		case EGF_Element::Fight:    return FLinearColor(0.75f, 0.33f, 0.25f, 1.f);
+		case EGF_Element::Poison:   return FLinearColor(0.64f, 0.31f, 0.65f, 1.f);
+		case EGF_Element::Dragon:   return FLinearColor(0.42f, 0.36f, 0.84f, 1.f);
+		case EGF_Element::Fairy:    return FLinearColor(0.96f, 0.62f, 0.80f, 1.f);
+		case EGF_Element::Ghost:    return FLinearColor(0.45f, 0.38f, 0.62f, 1.f);
+		case EGF_Element::Ice:      return FLinearColor(0.60f, 0.89f, 0.90f, 1.f);
+		default:                    return FLinearColor(0.50f, 0.50f, 0.50f, 1.f);
 	}
 }
 
@@ -241,23 +177,20 @@ FString UGF_ElementLibrary::GetElementAssetToken(EGF_Element Element)
 {
 	switch (Element)
 	{
-		case EGF_Element::Sinew:   return TEXT("SINEW");
-		case EGF_Element::Ember:   return TEXT("EMBER");
-		case EGF_Element::Tide:    return TEXT("TIDE");
-		case EGF_Element::Verdant: return TEXT("VERDANT");
-		case EGF_Element::Chitin:  return TEXT("CHITIN");
-		case EGF_Element::Gale:    return TEXT("GALE");
-		case EGF_Element::Terra:   return TEXT("TERRA");
-		case EGF_Element::Stone:   return TEXT("STONE");
-		case EGF_Element::Spark:   return TEXT("SPARK");
-		case EGF_Element::Ferrous: return TEXT("FERROUS");
-		case EGF_Element::Frost:   return TEXT("FROST");
-		case EGF_Element::Venom:   return TEXT("VENOM");
-		case EGF_Element::Umbra:   return TEXT("UMBRA");
-		case EGF_Element::Lumen:   return TEXT("LUMEN");
-		case EGF_Element::Aether:  return TEXT("AETHER");
-		case EGF_Element::Wyrm:    return TEXT("WYRM");
+		case EGF_Element::Fire:     return TEXT("FIRE");
+		case EGF_Element::Grass:    return TEXT("GRASS");
+		case EGF_Element::Water:    return TEXT("WATER");
+		case EGF_Element::Electric: return TEXT("ELECTRIC");
+		case EGF_Element::Dark:     return TEXT("DARK");
+		case EGF_Element::Light:    return TEXT("LIGHT");
+		case EGF_Element::Flying:   return TEXT("FLYING");
+		case EGF_Element::Fight:    return TEXT("FIGHT");
+		case EGF_Element::Poison:   return TEXT("POISON");
+		case EGF_Element::Dragon:   return TEXT("DRAGON");
+		case EGF_Element::Fairy:    return TEXT("FAIRY");
+		case EGF_Element::Ghost:    return TEXT("GHOST");
+		case EGF_Element::Ice:      return TEXT("ICE");
 		// Neutral and None share the plain sheet.
-		default:                   return TEXT("000");
+		default:                    return TEXT("000");
 	}
 }
