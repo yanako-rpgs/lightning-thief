@@ -236,10 +236,10 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamage(
     float WeatherModifier = GetWeatherModifier(SkillElement, WeatherType);
 
     //====================================================================================
-    // STEP 5: CALCULATE ACTUAL STATS FROM Potentials/Training/LEVEL
+    // STEP 5: CALCULATE ACTUAL STATS FROM APs/EPs/LEVEL
     //====================================================================================
 
-    // This is the root fix: FGF_CreatureInstanceData only stores raw Potentials/Training/Level.
+    // This is the root fix: FGF_CreatureInstanceData only stores raw APs/EPs/Level.
     // We MUST calculate the real stats before using them in the damage formula.
     FGF_CreatureCurrentStats AttackerStats = UGF_CreatureStatLibrary::CalculateCreatureStats(Attacker);
     FGF_CreatureCurrentStats DefenderStats = UGF_CreatureStatLibrary::CalculateCreatureStats(Defender);
@@ -298,16 +298,14 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamage(
     float LevelFactor = FMath::FloorToFloat((2.0f * Level) / 5.0f) + 2.0f;
     float RawDamage   = FMath::FloorToFloat((LevelFactor * Skill->Power * (AttackStat / DefenseStat)) / 50.0f) + 2.0f;
 
-    // STAB (Same Type Attack Bonus) — 1.5x if move type matches attacker's type
+    // STAB (Same Type Attack Bonus) — stronger for single-element attackers
     UGF_CreatureSpeciesData* AttackerSpecies = Attacker.SpeciesData.IsNull()
         ? nullptr : Attacker.SpeciesData.LoadSynchronous();
     float STAB = 1.0f;
     if (AttackerSpecies)
     {
-        if (SkillElement == AttackerSpecies->PrimaryElement || SkillElement == AttackerSpecies->SecondaryElement)
-        {
-            STAB = 1.5f;
-        }
+        STAB = BattleManagementFunctions::GetSTABBonus(
+            SkillElement, AttackerSpecies->PrimaryElement, AttackerSpecies->SecondaryElement);
     }
 
     // Critical hit is 2x in classic
@@ -520,16 +518,16 @@ float UGF_BattleComponent::GetWeatherModifier(EGF_Element SkillElement, EGF_Weat
     switch (Weather)
     {
         case EGF_WeatherType::HarshSun:
-            if (SkillElement == EGF_Element::Ember)
+            if (SkillElement == EGF_Element::Fire)
                 return 1.5f;
-            if (SkillElement == EGF_Element::Tide)
+            if (SkillElement == EGF_Element::Water)
                 return 0.5f;
             break;
 
         case EGF_WeatherType::Rain:
-            if (SkillElement == EGF_Element::Tide)
+            if (SkillElement == EGF_Element::Water)
                 return 1.5f;
-            if (SkillElement == EGF_Element::Ember)
+            if (SkillElement == EGF_Element::Fire)
                 return 0.5f;
             break;
 
@@ -854,7 +852,7 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     float WeatherModifier = GetWeatherModifier(SkillElement, WeatherType);
 
     //====================================================================================
-    // STEP 5: CALCULATE ACTUAL STATS FROM Potentials/Training/LEVEL
+    // STEP 5: CALCULATE ACTUAL STATS FROM APs/EPs/LEVEL
     //====================================================================================
 
     FGF_CreatureCurrentStats AttackerStats = UGF_CreatureStatLibrary::CalculateCreatureStats(Attacker);
@@ -931,10 +929,8 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     float STAB = 1.0f;
     if (AttackerSpecies)
     {
-        if (SkillElement == AttackerSpecies->PrimaryElement || SkillElement == AttackerSpecies->SecondaryElement)
-        {
-            STAB = 1.5f;
-        }
+        STAB = BattleManagementFunctions::GetSTABBonus(
+            SkillElement, AttackerSpecies->PrimaryElement, AttackerSpecies->SecondaryElement);
     }
 
     float CritMod      = Result.bWasCritical ? 2.0f : 1.0f;
@@ -1318,7 +1314,7 @@ bool UGF_BattleComponent::CanStatusSkillAffect(
     {
         case EGF_STATUSEffect::Burned:
             // Fire types cannot be burned
-            if (HasType(EGF_Element::Ember))
+            if (HasType(EGF_Element::Fire))
             {
                 UE_LOG(LogTemp, Log, TEXT("CanStatusSkillAffect: %s immune to Burn (Fire type)"),
                     *Defender.GetDisplayName().ToString());
@@ -1328,10 +1324,10 @@ bool UGF_BattleComponent::CanStatusSkillAffect(
             break;
 
         case EGF_STATUSEffect::Poisoned:
-            // Poison and Steel types cannot be poisoned
-            if (HasType(EGF_Element::Venom) || HasType(EGF_Element::Ferrous))
+            // Poison types cannot be poisoned
+            if (HasType(EGF_Element::Poison))
             {
-                UE_LOG(LogTemp, Log, TEXT("CanStatusSkillAffect: %s immune to Poison (Poison/Steel type)"),
+                UE_LOG(LogTemp, Log, TEXT("CanStatusSkillAffect: %s immune to Poison (Poison type)"),
                     *Defender.GetDisplayName().ToString());
                 OutFailMessage = GenericFailure;
                 return false;

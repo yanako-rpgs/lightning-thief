@@ -9,7 +9,7 @@
 /**
  * Creature Stats Radar Chart Widget
  * Displays a hexagonal radar chart for Creature stats (HP, ATK, DEF, SP.ATK, SP.DEF, SPD)
- * Supports real-time animation and dual display (current stats vs Potentials)
+ * Supports real-time animation and dual display (current stats vs APs)
  */
 UCLASS()
 class GAMMAFRAMEWORKCREATURES_API UGF_CreatureStatsRadarWidget : public UUserWidget
@@ -27,9 +27,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Creature Stats")
 	void SetStats(int32 HP, int32 Attack, int32 Defense, int32 Magic, int32 Poise, int32 Speed);
 
-	// Set the Creature Potentials to display
+	// Set the Creature APs to display
 	UFUNCTION(BlueprintCallable, Category = "Creature Stats")
-	void SetPotentials(int32 HP_Potential, int32 Attack_Potential, int32 Defense_Potential, int32 Magic_Potential, int32 Poise_Potential, int32 Speed_Potential);
+	void SetAPs(int32 HP_AP, int32 Attack_AP, int32 Defense_AP, int32 Magic_AP, int32 Poise_AP, int32 Speed_AP);
 
 	// Animate the chart outward (0.0 to 1.0)
 	UFUNCTION(BlueprintCallable, Category = "Creature Stats")
@@ -59,24 +59,24 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	int32 Stat_Speed = 100;
 
-	// Potentials (0-31)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 Potential_HP = 31;
+	// APs (0-50)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_HP = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 Potential_Attack = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_Attack = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 Potential_Defense = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_Defense = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 IV_Magic = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_Magic = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 IV_Poise = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_Poise = 50;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Potentials")
-	int32 Potential_Speed = 31;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "APs")
+	int32 AP_Speed = 50;
 
 	// Display settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Display")
@@ -89,7 +89,7 @@ protected:
 	float MaxStatValue = 255.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Display")
-	float MaxPotentialValue = 31.0f;
+	float MaxAPValue = 50.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Display")
 	bool bShowLabels = true;
@@ -103,7 +103,7 @@ protected:
 	bool bShowValues = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Display")
-	bool bShowPotentials = true;
+	bool bShowAPs = true;
 
 	// Animation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
@@ -120,10 +120,10 @@ protected:
 	FLinearColor StatLineColor = FLinearColor(0.5f, 0.76f, 0.29f, 1.0f); // Green
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Colors")
-	FLinearColor PotentialFillColor = FLinearColor(1.0f, 0.65f, 0.15f, 0.3f); // Orange transparent
+	FLinearColor APFillColor = FLinearColor(1.0f, 0.65f, 0.15f, 0.3f); // Orange transparent
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Colors")
-	FLinearColor PotentialLineColor = FLinearColor(1.0f, 0.65f, 0.15f, 1.0f); // Orange
+	FLinearColor APLineColor = FLinearColor(1.0f, 0.65f, 0.15f, 1.0f); // Orange
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Colors")
 	FLinearColor LabelColor = FLinearColor(0.5f, 0.76f, 0.29f, 1.0f); // Green
@@ -142,11 +142,11 @@ private:
 	// Helper functions for drawing
 	FVector2D GetStatPoint(int32 StatIndex, float Value, float MaxValue, const FVector2D& Center) const;
 	void DrawHexagonGrid(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId) const;
-	void DrawStatPolygon(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId, bool bIsPotential) const;
+	void DrawStatPolygon(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId, bool bIsAP) const;
 	void DrawLabels(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId) const;
 
 	// Get stat value by index
 	float GetStatByIndex(int32 Index) const;
-	float GetPotentialByIndex(int32 Index) const;
+	float GetAPByIndex(int32 Index) const;
 	FString GetStatLabel(int32 Index) const;
 };

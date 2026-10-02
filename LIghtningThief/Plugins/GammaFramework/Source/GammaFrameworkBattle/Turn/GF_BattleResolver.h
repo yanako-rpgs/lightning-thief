@@ -373,7 +373,7 @@ struct GAMMAFRAMEWORKBATTLE_API FGF_ChipDamageConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float PoisonFraction = 0.125f;
 
-	/** Sandstorm and Hail. Stone and Ferrous ignore sand; Frost ignores hail. */
+	/** Sandstorm and Hail. Nothing ignores sand; Ice ignores hail. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float WeatherFraction = 0.0625f;
 };

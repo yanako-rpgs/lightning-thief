@@ -82,10 +82,9 @@ namespace
 		switch (Status)
 		{
 			case EGF_STATUSEffect::Burned:
-				return ActorHasType(Creature, EGF_Element::Ember);
+				return ActorHasType(Creature, EGF_Element::Fire);
 			case EGF_STATUSEffect::Poisoned:
-				return ActorHasType(Creature, EGF_Element::Venom)
-					|| ActorHasType(Creature, EGF_Element::Ferrous);
+				return ActorHasType(Creature, EGF_Element::Poison);
 			case EGF_STATUSEffect::Paralyzed:
 				return false;   // classic has no Electric paralysis immunity
 			default:
@@ -375,10 +374,11 @@ float UGF_CreatureTraitLibrary::GetLowHPTypeBoost(EGF_CreatureTrait Trait, EGF_E
 	EGF_Element BoostedType = EGF_Element::None;
 	switch (Trait)
 	{
-		case EGF_CreatureTrait::Rootsurge:	BoostedType = EGF_Element::Verdant;	break;
-		case EGF_CreatureTrait::Cinderrage:	BoostedType = EGF_Element::Ember;	break;
-		case EGF_CreatureTrait::Tidesurge:	BoostedType = EGF_Element::Tide;	break;
-		case EGF_CreatureTrait::Hivecall:	BoostedType = EGF_Element::Chitin;	break;
+		case EGF_CreatureTrait::Rootsurge:	BoostedType = EGF_Element::Grass;	break;
+		case EGF_CreatureTrait::Cinderrage:	BoostedType = EGF_Element::Fire;	break;
+		case EGF_CreatureTrait::Tidesurge:	BoostedType = EGF_Element::Water;	break;
+		// Hivecall boosted the bug element, which Dokimon does not have; it falls
+		// through to "no boost" until it is given a new element.
 		default:						return 1.0f;
 	}
 
@@ -394,7 +394,7 @@ float UGF_CreatureTraitLibrary::GetLowHPTypeBoost(EGF_CreatureTrait Trait, EGF_E
 float UGF_CreatureTraitLibrary::GetDefenderDamageMultiplier(EGF_CreatureTrait DefenderTrait, EGF_Element SkillElement)
 {
 	if (DefenderTrait == EGF_CreatureTrait::Insulated
-		&& (SkillElement == EGF_Element::Ember || SkillElement == EGF_Element::Frost))
+		&& (SkillElement == EGF_Element::Fire || SkillElement == EGF_Element::Ice))
 	{
 		return 0.5f;
 	}
@@ -404,7 +404,9 @@ float UGF_CreatureTraitLibrary::GetDefenderDamageMultiplier(EGF_CreatureTrait De
 
 bool UGF_CreatureTraitLibrary::DoesTraitGrantTypeImmunity(EGF_CreatureTrait DefenderTrait, EGF_Element SkillElement)
 {
-	return DefenderTrait == EGF_CreatureTrait::Hover && SkillElement == EGF_Element::Terra;
+	// Hover granted ground immunity; Dokimon has no ground element, so no trait
+	// grants a type immunity right now.
+	return false;
 }
 
 bool UGF_CreatureTraitLibrary::DoesWonderGuardBlock(EGF_CreatureTrait DefenderTrait, float TypeEffectiveness)
@@ -646,13 +648,8 @@ bool UGF_CreatureTraitLibrary::IsSwitchBlockedByTrait(const AGF_Creature* Switch
 		return false;
 	}
 
-	if (GetActorTrait(Opponent) == EGF_CreatureTrait::Lodestone
-		&& ActorHasType(Switcher, EGF_Element::Ferrous))
-	{
-		OutMessage = FString::Printf(TEXT("%s's Lodestone prevents %s from escaping!"),
-			*StartName(Opponent), *MidName(Switcher));
-		return true;
-	}
+	// Lodestone trapped the steel element, which Dokimon does not have, so it
+	// traps nothing until it is given a new target.
 
 	return false;
 }

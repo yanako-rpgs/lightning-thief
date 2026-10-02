@@ -40,8 +40,8 @@ int32 UGF_CreatureStatsRadarWidget::NativePaint(const FPaintArgs& Args, const FG
 	// Draw grid
 	DrawHexagonGrid(AllottedGeometry, OutDrawElements, MaxLayerId);
 
-	// Draw Potential polygon (orange outline - behind the stat polygon)
-	if (bShowPotentials)
+	// Draw AP polygon (orange outline - behind the stat polygon)
+	if (bShowAPs)
 	{
 		DrawStatPolygon(AllottedGeometry, OutDrawElements, MaxLayerId + 1, true);
 	}
@@ -68,14 +68,14 @@ void UGF_CreatureStatsRadarWidget::SetStats(int32 HP, int32 Attack, int32 Defens
 	Stat_Speed = Speed;
 }
 
-void UGF_CreatureStatsRadarWidget::SetPotentials(int32 HP_Potential, int32 Attack_Potential, int32 Defense_Potential, int32 Magic_Potential, int32 Poise_Potential, int32 Speed_Potential)
+void UGF_CreatureStatsRadarWidget::SetAPs(int32 HP_AP, int32 Attack_AP, int32 Defense_AP, int32 Magic_AP, int32 Poise_AP, int32 Speed_AP)
 {
-	Potential_HP = HP_Potential;
-	Potential_Attack = Attack_Potential;
-	Potential_Defense = Defense_Potential;
-	IV_Magic = Magic_Potential;
-	IV_Poise = Poise_Potential;
-	Potential_Speed = Speed_Potential;
+	AP_HP = HP_AP;
+	AP_Attack = Attack_AP;
+	AP_Defense = Defense_AP;
+	AP_Magic = Magic_AP;
+	AP_Poise = Poise_AP;
+	AP_Speed = Speed_AP;
 }
 
 void UGF_CreatureStatsRadarWidget::SetAnimationProgress(float Progress)
@@ -198,7 +198,7 @@ void UGF_CreatureStatsRadarWidget::DrawHexagonGrid(const FGeometry& AllottedGeom
 	}
 }
 
-void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId, bool bIsPotential) const
+void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId, bool bIsAP) const
 {
 	FVector2D LocalSize = AllottedGeometry.GetLocalSize();
 	FVector2D Center = LocalSize * 0.5f;
@@ -208,8 +208,8 @@ void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeom
 	// Generate polygon points for all 6 stats
 	for (int32 i = 0; i < 6; i++)
 	{
-		float Value = bIsPotential ? GetPotentialByIndex(i) : GetStatByIndex(i);
-		float MaxValue = bIsPotential ? MaxPotentialValue : MaxStatValue;
+		float Value = bIsAP ? GetAPByIndex(i) : GetStatByIndex(i);
+		float MaxValue = bIsAP ? MaxAPValue : MaxStatValue;
 		FVector2D Point = GetStatPoint(i, Value, MaxValue, Center);
 		Points.Add(Point);
 	}
@@ -220,8 +220,8 @@ void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeom
 	}
 
 	// Draw outline
-	FLinearColor LineColor = bIsPotential ? PotentialLineColor : StatLineColor;
-	float Thickness = bIsPotential ? 2.0f : 2.5f;
+	FLinearColor LineColor = bIsAP ? APLineColor : StatLineColor;
+	float Thickness = bIsAP ? 2.0f : 2.5f;
 
 	for (int32 i = 0; i < 6; i++)
 	{
@@ -241,12 +241,12 @@ void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeom
 		);
 	}
 
-	// Draw filled polygon for both stats and Potentials
+	// Draw filled polygon for both stats and APs
 	// Note: Due to UMG rendering limitations, we'll use a scanline approach
 	if (AnimationProgress > 0.01f)
 	{
-		// Determine fill color based on whether this is Potential or Stat
-		FLinearColor FillColor = bIsPotential ? PotentialFillColor : StatFillColor;
+		// Determine fill color based on whether this is AP or Stat
+		FLinearColor FillColor = bIsAP ? APFillColor : StatFillColor;
 		const FSlateBrush* WhiteBrush = FCoreStyle::Get().GetBrush("WhiteBrush");
 
 		// For each triangle, fill it by drawing horizontal scanlines
@@ -316,7 +316,7 @@ void UGF_CreatureStatsRadarWidget::DrawStatPolygon(const FGeometry& AllottedGeom
 		// Draw a small circle at each vertex
 		TArray<FVector2D> CirclePoints;
 		const int32 CircleSegments = 8;
-		const float CircleRadius = bIsPotential ? 3.0f : 4.0f;
+		const float CircleRadius = bIsAP ? 3.0f : 4.0f;
 
 		for (int32 i = 0; i <= CircleSegments; i++)
 		{
@@ -366,7 +366,7 @@ void UGF_CreatureStatsRadarWidget::DrawLabels(const FGeometry& AllottedGeometry,
 		// Get stat info
 		FString StatLabel = GetStatLabel(i);
 		float StatValue = GetStatByIndex(i);
-		float PotentialValue = GetPotentialByIndex(i);
+		float APValue = GetAPByIndex(i);
 
 		// Measure text size for proper positioning
 		FVector2D LabelSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(StatLabel, UseLabelFont);
@@ -414,19 +414,19 @@ void UGF_CreatureStatsRadarWidget::DrawLabels(const FGeometry& AllottedGeometry,
 		// Draw stat value
 		if (bShowValues)
 		{
-			if (bShowPotentials)
+			if (bShowAPs)
 			{
-				// Draw in three parts: [GREEN stat] [WHITE /] [ORANGE Potential]
+				// Draw in three parts: [GREEN stat] [WHITE /] [ORANGE AP]
 				FString StatText = FString::Printf(TEXT("%.0f"), StatValue);
 				FString SlashText = TEXT("/");
-				FString PotentialText = FString::Printf(TEXT("%.0f"), PotentialValue);
+				FString APText = FString::Printf(TEXT("%.0f"), APValue);
 
 				// Measure each part
 				FVector2D StatSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(StatText, UseValueFont);
 				FVector2D SlashSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(SlashText, UseValueFont);
-				FVector2D PotentialSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(PotentialText, UseValueFont);
+				FVector2D APSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(APText, UseValueFont);
 
-				FVector2D TotalSize = FVector2D(StatSize.X + SlashSize.X + PotentialSize.X, StatSize.Y);
+				FVector2D TotalSize = FVector2D(StatSize.X + SlashSize.X + APSize.X, StatSize.Y);
 				FVector2D ValuePos = AdjustedLabelPos + ValueOffset;
 
 				// Center the entire value text
@@ -462,20 +462,20 @@ void UGF_CreatureStatsRadarWidget::DrawLabels(const FGeometry& AllottedGeometry,
 					FLinearColor(0.9f, 0.9f, 0.9f, 1.0f) // Light gray/white
 				);
 
-				// Draw Potential value (ORANGE)
+				// Draw AP value (ORANGE)
 				FSlateDrawElement::MakeText(
 					OutDrawElements,
 					LayerId,
 					AllottedGeometry.ToPaintGeometry(ValuePos + FVector2D(StatSize.X + SlashSize.X, 0.0f), FVector2D(1.0f, 1.0f)),
-					PotentialText,
+					APText,
 					UseValueFont,
 					ESlateDrawEffect::None,
-					PotentialLineColor // Orange color for Potential
+					APLineColor // Orange color for AP
 				);
 			}
 			else
 			{
-				// Single stat value (no Potential shown)
+				// Single stat value (no AP shown)
 				FString ValueText = FString::Printf(TEXT("%.0f"), StatValue);
 				FVector2D ValueSize = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(ValueText, UseValueFont);
 				FVector2D ValuePos = AdjustedLabelPos + ValueOffset;
@@ -519,16 +519,16 @@ float UGF_CreatureStatsRadarWidget::GetStatByIndex(int32 Index) const
 	}
 }
 
-float UGF_CreatureStatsRadarWidget::GetPotentialByIndex(int32 Index) const
+float UGF_CreatureStatsRadarWidget::GetAPByIndex(int32 Index) const
 {
 	switch (Index)
 	{
-	case 0: return Potential_HP;
-	case 1: return Potential_Attack;
-	case 2: return Potential_Defense;
-	case 3: return Potential_Speed;        // Changed: SPD at bottom
-	case 4: return IV_Poise;        // Changed: Sp. DEF at bottom-left
-	case 5: return IV_Magic;        // Changed: Sp. ATK at top-left
+	case 0: return AP_HP;
+	case 1: return AP_Attack;
+	case 2: return AP_Defense;
+	case 3: return AP_Speed;        // Changed: SPD at bottom
+	case 4: return AP_Poise;        // Changed: Sp. DEF at bottom-left
+	case 5: return AP_Magic;        // Changed: Sp. ATK at top-left
 	default: return 0.0f;
 	}
 }

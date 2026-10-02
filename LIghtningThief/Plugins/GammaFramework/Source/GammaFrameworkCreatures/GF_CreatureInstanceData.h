@@ -125,6 +125,21 @@ struct FGF_SkillDisplayInfo
 
 
 /**
+ * One of the six stats, for anything that addresses a stat by value rather than
+ * by field -- EP allocation from the party screen above all.
+ */
+UENUM(BlueprintType)
+enum class EGF_CreatureStat : uint8
+{
+	HP		UMETA(DisplayName = "HP"),
+	Attack	UMETA(DisplayName = "Attack"),
+	Defense	UMETA(DisplayName = "Defense"),
+	Magic	UMETA(DisplayName = "Magic"),
+	Poise	UMETA(DisplayName = "Poise"),
+	Speed	UMETA(DisplayName = "Speed")
+};
+
+/**
  * How this Creature came to be owned. Drives the wording of the tamer memo line
  * ("Met at Lv. 5." vs "Egg hatched.") and nothing else — it is display data.
  *
@@ -174,43 +189,47 @@ struct GAMMAFRAMEWORKCREATURES_API FGF_CreatureInstanceData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
 	float MaxHP = 100;
 
-	// Potentials (Individual Values)
+	// APs -- the Dokimon take on individual values. Rolled 0-MaxAP at birth, then
+	// raised toward MaxAP as Affinity grows (AddAffinity); every AP is MaxAP once
+	// Affinity is maxed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 HP_Potential = 0;
+	int32 HP_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Attack_Potential = 0;
+	int32 Attack_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Defense_Potential = 0;
+	int32 Defense_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Magic_Potential = 0;
+	int32 Magic_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Poise_Potential = 0;
+	int32 Poise_AP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Speed_Potential = 0;
+	int32 Speed_AP = 0;
 
-	// Training (Effort Values)
+	// EPs -- earned points. The creature earns EPPerLevel per level and the
+	// player spreads them freely, taking them back out at any time (showdown
+	// teambuilder style). The six together never exceed GetEPBudget().
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 HP_Training = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Attack_Training = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Defense_Training = 0;
+	int32 HP_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Magic_Training = 0;
+	int32 Attack_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Poise_Training = 0;
+	int32 Defense_EP = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
-	int32 Speed_Training = 0;
+	int32 Magic_EP = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
+	int32 Poise_EP = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
+	int32 Speed_EP = 0;
 
 	// Temperament & Gender
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
@@ -371,10 +390,11 @@ struct GAMMAFRAMEWORKCREATURES_API FGF_CreatureInstanceData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "Egg")
 	int32 EggUniqueRolls = 1;
 
-	// Bond / happiness, 0-255. Starts at 70 for a caught Creature and at
-	// 120 for one that hatched from an egg, matching classic.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, meta = (ClampMin = "0", ClampMax = "255"))
-	int32 Bond = 70;
+	// Affinity, 0-MaxAffinity. Starts at 0 for every creature and rises
+	// passively as it battles. Write it through AddAffinity, never directly:
+	// that is what carries the APs up with it.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, meta = (ClampMin = "0", ClampMax = "100"))
+	int32 Affinity = 0;
 
 	// Special Properties
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
@@ -441,21 +461,21 @@ FGF_CreatureInstanceData(const FGF_CreatureInstanceData& Other)
     CurrentHP = Other.CurrentHP;
     MaxHP = Other.MaxHP;
 
-    // Potentials
-    HP_Potential = Other.HP_Potential;
-    Attack_Potential = Other.Attack_Potential;
-    Defense_Potential = Other.Defense_Potential;
-    Magic_Potential = Other.Magic_Potential;
-    Poise_Potential = Other.Poise_Potential;
-    Speed_Potential = Other.Speed_Potential;
+    // APs
+    HP_AP = Other.HP_AP;
+    Attack_AP = Other.Attack_AP;
+    Defense_AP = Other.Defense_AP;
+    Magic_AP = Other.Magic_AP;
+    Poise_AP = Other.Poise_AP;
+    Speed_AP = Other.Speed_AP;
 
-    // Training
-    HP_Training = Other.HP_Training;
-    Attack_Training = Other.Attack_Training;
-    Defense_Training = Other.Defense_Training;
-    Magic_Training = Other.Magic_Training;
-    Poise_Training = Other.Poise_Training;
-    Speed_Training = Other.Speed_Training;
+    // EPs
+    HP_EP = Other.HP_EP;
+    Attack_EP = Other.Attack_EP;
+    Defense_EP = Other.Defense_EP;
+    Magic_EP = Other.Magic_EP;
+    Poise_EP = Other.Poise_EP;
+    Speed_EP = Other.Speed_EP;
 
     // Temperament & Gender
     Temperament = Other.Temperament;
@@ -498,14 +518,14 @@ FGF_CreatureInstanceData(const FGF_CreatureInstanceData& Other)
     bIsDowned = Other.bIsDowned;
     bCannotEvolve = Other.bCannotEvolve;
 
-    // Egg / bond — NOTE: this copy constructor is hand-written, so any new
+    // Egg / affinity — NOTE: this copy constructor is hand-written, so any new
     // field added to this struct MUST be copied here or it silently resets.
     bIsEgg = Other.bIsEgg;
     EggCyclesRemaining = Other.EggCyclesRemaining;
     EggSpeciesName = Other.EggSpeciesName;
     EggUniqueRolls = Other.EggUniqueRolls;
     EggAppearanceType = Other.EggAppearanceType;
-    Bond = Other.Bond;
+    Affinity = Other.Affinity;
 
 
     // Held item
@@ -586,9 +606,9 @@ TArray<TSoftClassPtr<AGF_SkillDefinition>> GetSkillsToLearnAtLevel(int32 AtLevel
 	TArray<TSoftClassPtr<AGF_SkillDefinition>> GetEarliestLearnableSkills() const;
 
 /**
- * Check if Creature can learn more moves (has less than 4)
+ * Check if Creature has an open move slot at its current level
  */
-bool CanLearnMoreSkills() const { return Skills.Num() < 4; }
+bool CanLearnMoreSkills() const { return Skills.Num() < GetSkillSlotCount(); }
 
 	// Check if this data is valid (has a species reference path set)
 	// Uses IsNull() rather than IsValid() - IsValid() requires the asset to be in memory,
@@ -605,8 +625,51 @@ bool CanLearnMoreSkills() const { return Skills.Num() < 4; }
 	// True if this entry is an unhatched egg.
 	bool IsEgg() const { return bIsEgg; }
 
-	// Adjust bond, clamped to 0-255.
-	void AddBond(int32 Delta) { Bond = FMath::Clamp(Bond + Delta, 0, 255); }
+	//--------------------
+	// APs / EPs / AFFINITY
+	//--------------------
+
+	static constexpr int32 MaxAP = 50;
+	static constexpr int32 MaxAffinity = 100;
+	static constexpr int32 EPPerLevel = 1;
+
+	/**
+	 * Adjust affinity, clamped to 0-MaxAffinity. A gain also raises every AP
+	 * toward MaxAP by the same share of the remaining distance, so APs land on
+	 * MaxAP exactly when affinity does. Losing affinity never lowers an AP.
+	 *
+	 * Changes stats: call UGF_CreatureManagerSubsystem::RecalculateStats after.
+	 */
+	void AddAffinity(int32 Delta);
+
+	bool IsMaxAffinity() const { return Affinity >= MaxAffinity; }
+
+	int32 GetAP(EGF_CreatureStat Stat) const;
+	int32 GetEP(EGF_CreatureStat Stat) const;
+
+	int32 GetTotalEP() const { return HP_EP + Attack_EP + Defense_EP + Magic_EP + Poise_EP + Speed_EP; }
+	int32 GetEPBudget() const { return FMath::Max(0, Level) * EPPerLevel; }
+	int32 GetUnspentEP() const { return FMath::Max(0, GetEPBudget() - GetTotalEP()); }
+
+	/**
+	 * Move EPs into (positive Delta) or out of (negative) one stat. Clamped so the
+	 * stat never goes below 0 and the total never passes the budget.
+	 * @return how many points actually moved, signed like Delta.
+	 */
+	int32 AllocateEP(EGF_CreatureStat Stat, int32 Delta);
+
+	/** Refund every EP back to unspent. */
+	void ResetEPs();
+
+	/**
+	 * Pulls out-of-range APs, EPs and affinity back into range: negatives to 0,
+	 * APs to MaxAP, and an EP total over budget trimmed from Speed backward.
+	 * For data from outside the game's own rules -- gifts, debug edits.
+	 */
+	void NormalizeGrowth();
+
+	/** Move slots this creature has at its current level. */
+	int32 GetSkillSlotCount() const;
 
 	/**
  * Give this Creature a held item

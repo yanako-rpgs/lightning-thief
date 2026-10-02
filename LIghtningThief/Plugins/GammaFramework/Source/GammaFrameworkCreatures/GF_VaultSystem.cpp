@@ -308,13 +308,9 @@ bool UGF_VaultSystem::UpdatePartyCreatureBattleData(int32 Index, const FGF_Creat
 	// ExistingData.Level = BattleData.Level;           ← REMOVED
 	// ExistingData.CurrentEXP = BattleData.CurrentEXP; ← REMOVED
 
-	// Training (updated if Creature defeated enemies)
-	ExistingData.HP_Training = BattleData.HP_Training;
-	ExistingData.Attack_Training = BattleData.Attack_Training;
-	ExistingData.Defense_Training = BattleData.Defense_Training;
-	ExistingData.Magic_Training = BattleData.Magic_Training;
-	ExistingData.Poise_Training = BattleData.Poise_Training;
-	ExistingData.Speed_Training = BattleData.Speed_Training;
+	// APs, EPs and Affinity are NOT copied back either. Battles never change EPs, and
+	// AwardEXPFromBattle writes Affinity (and the APs it raises) straight into the
+	// party, so the battle actor's copies are stale by the time this runs.
 
 	UE_LOG(LogTemp, Log, TEXT("Synced Battle Data for slot %d"), Index);
 	UE_LOG(LogTemp, Log, TEXT("   - Level: %d (preserved from GiveEXP)"), ExistingData.Level);

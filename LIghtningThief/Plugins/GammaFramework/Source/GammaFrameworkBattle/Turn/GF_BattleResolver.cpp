@@ -136,9 +136,9 @@ bool UGF_BattleResolver::IsImmuneToWeatherChip(EGF_Element Element, EGF_WeatherT
 	switch (Weather)
 	{
 	case EGF_WeatherType::Sandstorm:
-		return Element == EGF_Element::Stone || Element == EGF_Element::Ferrous;
+		return false;   // no Rock/Steel equivalent among the Dokimon elements
 	case EGF_WeatherType::Hail:
-		return Element == EGF_Element::Frost;
+		return Element == EGF_Element::Ice;
 	default:
 		// Sun and rain do not chip anything.
 		return true;

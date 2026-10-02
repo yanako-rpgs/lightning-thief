@@ -14,8 +14,8 @@
  *
  * Stats are calculated from:
  * - Base Stats (from species)
- * - Potentials (Individual Values)
- * - Training (Effort Values)
+ * - APs (rolled at birth, grow with affinity, max 50)
+ * - EPs (1 per level, freely allocated; each EP counts like one AP)
  * - Level
  * - Temperament modifiers
  */
@@ -37,18 +37,18 @@ public:
 
     /**
      * Calculate HP stat using classic formula
-     * HP = floor(((2 � Base + Potential + floor(TrainingValue/4)) � Level) / 100) + Level + 10
+     * HP = floor(((2 * Base + AP + EP) * Level) / 100) + Level + 10
      */
     UFUNCTION(BlueprintPure, Category = "Creature|Stats")
-    static int32 CalculateHP(int32 BaseHP, int32 Potential, int32 TrainingValue, int32 Level);
+    static int32 CalculateHP(int32 BaseHP, int32 AP, int32 EP, int32 Level);
 
     /**
-     * Calculate a single stat (Attack, Defense, etc.) using classic formula
-     * Stat = floor((floor(((2 � Base + Potential + floor(TrainingValue/4)) � Level) / 100) + 5) � Temperament)
+     * Calculate a single stat (Attack, Defense, etc.)
+     * Stat = floor((floor(((2 * Base + AP + EP) * Level) / 100) + 5) * Temperament)
      *
      * @param BaseStat - Base stat value from species
-     * @param Potential - Individual Value (0-31)
-     * @param TrainingValue - Effort Value (0-252)
+     * @param AP - AP for this stat (0-50)
+     * @param EP - EPs allocated to this stat
      * @param Level - Creature's level
      * @param Temperament - Creature's nature
      * @param bIsAttack - Set to true if calculating Attack stat
@@ -61,8 +61,8 @@ public:
     UFUNCTION(BlueprintPure, Category = "Creature|Stats")
     static int32 CalculateStat(
         int32 BaseStat,
-        int32 Potential,
-        int32 TrainingValue,
+        int32 AP,
+        int32 EP,
         int32 Level,
         EGF_Temperament Temperament,
         bool bIsAttack,
@@ -71,6 +71,38 @@ public:
         bool bIsPoise,
         bool bIsSpeed
     );
+
+    // --------------------------------------------------------
+    // APs / EPs / AFFINITY (read-only helpers for the info screen;
+    // change them through UGF_CreatureManagerSubsystem)
+    // --------------------------------------------------------
+
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetCreatureAP(const FGF_CreatureInstanceData& CreatureData, EGF_CreatureStat Stat) { return CreatureData.GetAP(Stat); }
+
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetCreatureEP(const FGF_CreatureInstanceData& CreatureData, EGF_CreatureStat Stat) { return CreatureData.GetEP(Stat); }
+
+    /** EPs earned so far: EPPerLevel x Level. */
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetEPBudget(const FGF_CreatureInstanceData& CreatureData) { return CreatureData.GetEPBudget(); }
+
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetUnspentEP(const FGF_CreatureInstanceData& CreatureData) { return CreatureData.GetUnspentEP(); }
+
+    /** True at max affinity -- show the heart on the first info page. */
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static bool IsMaxAffinity(const FGF_CreatureInstanceData& CreatureData) { return CreatureData.IsMaxAffinity(); }
+
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetMaxAP() { return FGF_CreatureInstanceData::MaxAP; }
+
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetMaxAffinity() { return FGF_CreatureInstanceData::MaxAffinity; }
+
+    /** Move slots open at the Creature's level (2, 3 from Lv 7, 4 from Lv 12 by default). */
+    UFUNCTION(BlueprintPure, Category = "Creature|Skills")
+    static int32 GetSkillSlotCount(const FGF_CreatureInstanceData& CreatureData) { return CreatureData.GetSkillSlotCount(); }
 
     /**
      * Get nature modifier for a specific stat

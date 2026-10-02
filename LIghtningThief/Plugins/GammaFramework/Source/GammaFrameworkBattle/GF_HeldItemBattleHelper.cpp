@@ -290,8 +290,8 @@ void UGF_HeldItemBattleHelper::HandleEndOfTurnEffects(UObject* WorldContext, AGF
     // Foul Sludge: Damages non-Poison types, heals Poison types
     if (HeldItem->ItemName == FName("FoulSludge"))
     {
-        if (Creature->PrimaryElement == EGF_Element::Venom ||
-            Creature->SecondaryElement == EGF_Element::Venom)
+        if (Creature->PrimaryElement == EGF_Element::Poison ||
+            Creature->SecondaryElement == EGF_Element::Poison)
         {
             // Heal Poison-type Creature
             float HPRestored = Creature->CurrentStats.MaxHP * (HeldItem->HPRestorePerTurn / 100.0f);

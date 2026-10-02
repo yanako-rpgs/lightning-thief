@@ -31,8 +31,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate HP (both MaxHP and CurrentHP)
     int32 CalculatedHP = CalculateHP(
         BaseStats.HP,
-        CreatureData.HP_Potential,
-        CreatureData.HP_Training,
+        CreatureData.HP_AP,
+        CreatureData.HP_EP,
         CreatureData.Level
     );
     // Husk: see UGF_CreatureSpeciesData::HasFixedOneHP.
@@ -42,8 +42,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate Attack
     Stats.Attack = static_cast<float>(CalculateStat(
         BaseStats.Attack,
-        CreatureData.Attack_Potential,
-        CreatureData.Attack_Training,
+        CreatureData.Attack_AP,
+        CreatureData.Attack_EP,
         CreatureData.Level,
         CreatureData.Temperament,
         true, false, false, false, false // bIsAttack
@@ -52,8 +52,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate Defense
     Stats.Defense = static_cast<float>(CalculateStat(
         BaseStats.Defense,
-        CreatureData.Defense_Potential,
-        CreatureData.Defense_Training,
+        CreatureData.Defense_AP,
+        CreatureData.Defense_EP,
         CreatureData.Level,
         CreatureData.Temperament,
         false, true, false, false, false // bIsDefense
@@ -62,8 +62,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate Special Attack
     Stats.Magic = static_cast<float>(CalculateStat(
         BaseStats.Magic,
-        CreatureData.Magic_Potential,
-        CreatureData.Magic_Training,
+        CreatureData.Magic_AP,
+        CreatureData.Magic_EP,
         CreatureData.Level,
         CreatureData.Temperament,
         false, false, true, false, false // bIsMagic
@@ -72,8 +72,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate Special Defense
     Stats.Poise = static_cast<float>(CalculateStat(
         BaseStats.Poise,
-        CreatureData.Poise_Potential,
-        CreatureData.Poise_Training,
+        CreatureData.Poise_AP,
+        CreatureData.Poise_EP,
         CreatureData.Level,
         CreatureData.Temperament,
         false, false, false, true, false // bIsPoise
@@ -82,8 +82,8 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     // Calculate Speed
     Stats.Speed = static_cast<float>(CalculateStat(
         BaseStats.Speed,
-        CreatureData.Speed_Potential,
-        CreatureData.Speed_Training,
+        CreatureData.Speed_AP,
+        CreatureData.Speed_EP,
         CreatureData.Level,
         CreatureData.Temperament,
         false, false, false, false, true // bIsSpeed
@@ -92,17 +92,16 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
     return Stats;
 }
 
-int32 UGF_CreatureStatLibrary::CalculateHP(int32 BaseHP, int32 Potential, int32 TrainingValue, int32 Level)
+int32 UGF_CreatureStatLibrary::CalculateHP(int32 BaseHP, int32 AP, int32 EP, int32 Level)
 {
-    // classic HP Formula: floor(((2 × Base + Potential + floor(TrainingValue/4)) × Level) / 100) + Level + 10
+    // HP Formula: floor(((2 × Base + AP + EP) × Level) / 100) + Level + 10
 
     // Clamp inputs to valid ranges
-    Potential = FMath::Clamp(Potential, 0, 31);
-    TrainingValue = FMath::Clamp(TrainingValue, 0, 252);
+    AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
+    EP = FMath::Max(EP, 0);
     Level = FMath::Clamp(Level, 1, 100);
 
-    float TrainingBonus = FMath::Floor(TrainingValue / 4.0f);
-    float BasePart = (2.0f * BaseHP + Potential + TrainingBonus) * Level;
+    float BasePart = (2.0f * BaseHP + AP + EP) * Level;
     int32 HP = FMath::FloorToInt(BasePart / 100.0f) + Level + 10;
 
     return FMath::Max(1, HP); // Minimum 1 HP
@@ -110,8 +109,8 @@ int32 UGF_CreatureStatLibrary::CalculateHP(int32 BaseHP, int32 Potential, int32 
 
 int32 UGF_CreatureStatLibrary::CalculateStat(
     int32 BaseStat,
-    int32 Potential,
-    int32 TrainingValue,
+    int32 AP,
+    int32 EP,
     int32 Level,
     EGF_Temperament Temperament,
     bool bIsAttack,
@@ -120,16 +119,15 @@ int32 UGF_CreatureStatLibrary::CalculateStat(
     bool bIsPoise,
     bool bIsSpeed)
 {
-    // classic Stat Formula: floor((floor(((2 × Base + Potential + floor(TrainingValue/4)) × Level) / 100) + 5) × Temperament)
+    // Stat Formula: floor((floor(((2 × Base + AP + EP) × Level) / 100) + 5) × Temperament)
 
     // Clamp inputs to valid ranges
-    Potential = FMath::Clamp(Potential, 0, 31);
-    TrainingValue = FMath::Clamp(TrainingValue, 0, 252);
+    AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
+    EP = FMath::Max(EP, 0);
     Level = FMath::Clamp(Level, 1, 100);
 
     // Calculate base stat before nature
-    float TrainingBonus = FMath::Floor(TrainingValue / 4.0f);
-    float BasePart = (2.0f * BaseStat + Potential + TrainingBonus) * Level;
+    float BasePart = (2.0f * BaseStat + AP + EP) * Level;
     int32 BaseStatCalc = FMath::FloorToInt(BasePart / 100.0f) + 5;
 
     // Apply nature modifier

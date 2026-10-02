@@ -3,6 +3,7 @@
 #include "GF_CreatureInstanceData.h"
 #include "GF_CreatureSpeciesData.h"
 #include "GF_CreatureTraits.h"
+#include "GF_CreatureRules.h"
 
 // UPDATED: Now accepts tamer parameters
 void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData, int32 InLevel,
@@ -39,21 +40,22 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 		UE_LOG(LogTemp, Warning, TEXT("Creature initialized without tamer info - will be set later"));
 	}
 
-	// Generate random Potentials
-	HP_Potential = FMath::RandRange(0, 31);
-	Attack_Potential = FMath::RandRange(0, 31);
-	Defense_Potential = FMath::RandRange(0, 31);
-	Magic_Potential = FMath::RandRange(0, 31);
-	Poise_Potential = FMath::RandRange(0, 31);
-	Speed_Potential = FMath::RandRange(0, 31);
+	// Roll APs
+	HP_AP = FMath::RandRange(0, MaxAP);
+	Attack_AP = FMath::RandRange(0, MaxAP);
+	Defense_AP = FMath::RandRange(0, MaxAP);
+	Magic_AP = FMath::RandRange(0, MaxAP);
+	Poise_AP = FMath::RandRange(0, MaxAP);
+	Speed_AP = FMath::RandRange(0, MaxAP);
+	Affinity = 0;
 
-	// Training start at 0
-	HP_Training = 0;
-	Attack_Training = 0;
-	Defense_Training = 0;
-	Magic_Training = 0;
-	Poise_Training = 0;
-	Speed_Training = 0;
+	// EPs start unspent
+	HP_EP = 0;
+	Attack_EP = 0;
+	Defense_EP = 0;
+	Magic_EP = 0;
+	Poise_EP = 0;
+	Speed_EP = 0;
 
 	// Random Temperament
 	int32 TemperamentCount = static_cast<int32>(EGF_Temperament::MAX);
@@ -99,7 +101,7 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 		UE_LOG(LogTemp, Warning, TEXT("Initializing %s with %d starting moves"),
 			*InSpeciesData->SpeciesName.ToString(), StartingSkills.Num());
 
-		for (int32 i = 0; i < FMath::Min(StartingSkills.Num(), 4); i++)
+		for (int32 i = 0; i < FMath::Min(StartingSkills.Num(), GetSkillSlotCount()); i++)
 		{
 			if (StartingSkills[i])
 			{
@@ -147,9 +149,10 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 			return A.LearnLevel < B.LearnLevel;
 		});
 
-		// Take the last up to 4 moves (most recently learned), keeping oldest-first order
-		// e.g. Ram (L1), Bluster (L1), Siphon (L6) → slots 0,1,2 in that order
-		const int32 StartIdx = FMath::Max(0, ValidSkills.Num() - 4);
+		// Take the most recently learned moves that fit the slots open at this level,
+		// keeping oldest-first order, e.g. at Lv 7 with 3 slots:
+		// Ram (L1), Bluster (L1), Siphon (L6) → slots 0,1,2 in that order
+		const int32 StartIdx = FMath::Max(0, ValidSkills.Num() - GetSkillSlotCount());
 		for (int32 i = StartIdx; i < ValidSkills.Num(); i++)
 		{
 			Skills.Add(ValidSkills[i].Skill);
@@ -178,7 +181,7 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 			Probe.SpeciesData = InSpeciesData;
 			for (const TSoftClassPtr<AGF_SkillDefinition>& Fallback : Probe.GetEarliestLearnableSkills())
 			{
-				if (Skills.Num() >= 4) break;
+				if (Skills.Num() >= GetSkillSlotCount()) break;
 
 				Skills.Add(Fallback);
 				int32 SkillUses = 10;
@@ -256,6 +259,112 @@ FName FGF_CreatureInstanceData::GetDisplayName() const
 	}
 
 	return FName("Unknown");
+}
+
+namespace
+{
+	int32* StatField(FGF_CreatureInstanceData& Creature, EGF_CreatureStat Stat, bool bAP)
+	{
+		switch (Stat)
+		{
+			case EGF_CreatureStat::HP:      return bAP ? &Creature.HP_AP      : &Creature.HP_EP;
+			case EGF_CreatureStat::Attack:  return bAP ? &Creature.Attack_AP  : &Creature.Attack_EP;
+			case EGF_CreatureStat::Defense: return bAP ? &Creature.Defense_AP : &Creature.Defense_EP;
+			case EGF_CreatureStat::Magic:   return bAP ? &Creature.Magic_AP   : &Creature.Magic_EP;
+			case EGF_CreatureStat::Poise:   return bAP ? &Creature.Poise_AP   : &Creature.Poise_EP;
+			case EGF_CreatureStat::Speed:   return bAP ? &Creature.Speed_AP   : &Creature.Speed_EP;
+			default:                        return nullptr;
+		}
+	}
+
+	const EGF_CreatureStat AllStats[] = {
+		EGF_CreatureStat::HP, EGF_CreatureStat::Attack, EGF_CreatureStat::Defense,
+		EGF_CreatureStat::Magic, EGF_CreatureStat::Poise, EGF_CreatureStat::Speed
+	};
+}
+
+int32 FGF_CreatureInstanceData::GetAP(EGF_CreatureStat Stat) const
+{
+	const int32* Field = StatField(const_cast<FGF_CreatureInstanceData&>(*this), Stat, true);
+	return Field ? *Field : 0;
+}
+
+int32 FGF_CreatureInstanceData::GetEP(EGF_CreatureStat Stat) const
+{
+	const int32* Field = StatField(const_cast<FGF_CreatureInstanceData&>(*this), Stat, false);
+	return Field ? *Field : 0;
+}
+
+void FGF_CreatureInstanceData::AddAffinity(int32 Delta)
+{
+	const int32 Before = Affinity;
+	Affinity = FMath::Clamp(Affinity + Delta, 0, MaxAffinity);
+
+	const int32 Gained = Affinity - Before;
+	if (Gained <= 0)
+	{
+		return;
+	}
+
+	// Close the same fraction of every AP's gap to MaxAP as this gain closes of
+	// affinity's gap to MaxAffinity. Rounding to nearest keeps each AP within one
+	// point of a straight line from its birth roll to MaxAP, and the last gain
+	// (Gained == Remaining) always lands exactly on MaxAP.
+	const float Share = static_cast<float>(Gained) / static_cast<float>(MaxAffinity - Before);
+	for (const EGF_CreatureStat Stat : AllStats)
+	{
+		int32& AP = *StatField(*this, Stat, true);
+		AP = FMath::Clamp(AP + FMath::RoundToInt((MaxAP - AP) * Share), 0, MaxAP);
+	}
+}
+
+int32 FGF_CreatureInstanceData::AllocateEP(EGF_CreatureStat Stat, int32 Delta)
+{
+	int32* Field = StatField(*this, Stat, false);
+	if (!Field || Delta == 0)
+	{
+		return 0;
+	}
+
+	const int32 Moved = (Delta > 0)
+		? FMath::Min(Delta, GetUnspentEP())
+		: -FMath::Min(-Delta, *Field);
+
+	*Field += Moved;
+	return Moved;
+}
+
+void FGF_CreatureInstanceData::ResetEPs()
+{
+	HP_EP = Attack_EP = Defense_EP = Magic_EP = Poise_EP = Speed_EP = 0;
+}
+
+void FGF_CreatureInstanceData::NormalizeGrowth()
+{
+	Affinity = FMath::Clamp(Affinity, 0, MaxAffinity);
+
+	for (const EGF_CreatureStat Stat : AllStats)
+	{
+		int32& AP = *StatField(*this, Stat, true);
+		AP = FMath::Clamp(AP, 0, MaxAP);
+
+		int32& EP = *StatField(*this, Stat, false);
+		EP = FMath::Max(0, EP);
+	}
+
+	int32 Excess = GetTotalEP() - GetEPBudget();
+	for (int32 i = UE_ARRAY_COUNT(AllStats) - 1; i >= 0 && Excess > 0; --i)
+	{
+		int32& EP = *StatField(*this, AllStats[i], false);
+		const int32 Cut = FMath::Min(EP, Excess);
+		EP -= Cut;
+		Excess -= Cut;
+	}
+}
+
+int32 FGF_CreatureInstanceData::GetSkillSlotCount() const
+{
+	return UGF_CreatureRulesSettings::GetSkillSlotsForLevel(Level);
 }
 
 void FGF_CreatureInstanceData::NormalizeEggState()
@@ -336,7 +445,7 @@ bool FGF_CreatureInstanceData::LearnSkill(TSoftClassPtr<AGF_SkillDefinition> New
     }
 
     // If has space, just add it
-    if (Skills.Num() < 4)
+    if (CanLearnMoreSkills())
     {
         Skills.Add(NewSkill);
         CurrentUses.Add(SkillUses);

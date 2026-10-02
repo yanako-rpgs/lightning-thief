@@ -198,7 +198,7 @@ enum class EGF_EvolutionTrigger : uint8
     Level       UMETA(DisplayName = "Level"),
     Item        UMETA(DisplayName = "Item"),
     Trade       UMETA(DisplayName = "Trade"),
-    Bond  UMETA(DisplayName = "Bond"),
+    Affinity  UMETA(DisplayName = "Affinity"),
     TradeItem   UMETA(DisplayName = "Trade with Item")
 };
 
@@ -232,8 +232,9 @@ struct FGF_EvolutionMethod
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Evolution")
     FName RequiredItem;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Evolution")
-    int32 RequiredBond = 0;
+    // Affinity (0-100) the creature needs for an Affinity-triggered evolution.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Evolution", meta = (ClampMin = "0", ClampMax = "100"))
+    int32 RequiredAffinity = 0;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Evolution")
     FName RequiredHeldItem; // For trade evolutions with held items
@@ -286,7 +287,7 @@ public:
 
 	/**
 	 * Husk is the one species whose HP is NOT the Gen-3 formula: it is always
-	 * exactly 1, at every level, with any Potentials or Training.
+	 * exactly 1, at every level, with any APs or EPs.
 	 *
 	 * This exists because six separate places compute MaxHP -- the subsystem's
 	 * RecalculateStats, the level-up loop, UGF_CreatureStatLibrary, the battle actor's
