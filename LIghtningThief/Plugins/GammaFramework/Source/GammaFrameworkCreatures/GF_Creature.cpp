@@ -888,6 +888,8 @@ void AGF_Creature::ResetVolatileStatuses()
     bHasMovedThisTurn = false;
     bIsConfused = false;
     ConfusionTurnsRemaining = 0;
+    bHasActedSinceEntering = false;
+    bMustRecharge = false;
 
     // Confusion is currently applied through the non-volatile Status slot rather than
     // bIsConfused, so clearing the flags above isn't enough — drop the status too.

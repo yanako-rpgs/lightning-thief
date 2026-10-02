@@ -775,6 +775,22 @@ EGF_CreatureTrait OriginalTrait = EGF_CreatureTrait::None;
 UPROPERTY(BlueprintReadWrite, Category = "Creature | Battle | Trait")
 bool bTruantLoafingThisTurn = false;
 
+/**
+ * True once this Creature has taken any action since it entered the field.
+ * First-turn-only skills (Surprise Attack, Early Bird) fail once it is set.
+ * Set by UGF_BattleResolver::ApplyResolution; cleared on send-out and switch-in.
+ */
+UPROPERTY(BlueprintReadWrite, Category = "Creature | Battle")
+bool bHasActedSinceEntering = false;
+
+/**
+ * True when this Creature's next turn is spent recharging, after a recharge
+ * skill (Charge Cannon, Dark Bond) connected. The resolver turns its next action
+ * into a "must recharge" turn and clears it. Cleared on switch-out.
+ */
+UPROPERTY(BlueprintReadWrite, Category = "Creature | Battle")
+bool bMustRecharge = false;
+
 
 // ============================================
 // ADD THESE FUNCTIONS in #pragma region Creature FUNCTIONS
