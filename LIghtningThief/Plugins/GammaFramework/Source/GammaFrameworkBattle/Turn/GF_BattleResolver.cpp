@@ -180,6 +180,17 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 		return Resolution;
 	}
 
+	// A recharge turn swallows whatever was chosen. Checked before the action type
+	// so a recharging creature cannot slip a Brace or an item in instead.
+	if (Attacker->bMustRecharge)
+	{
+		Resolution.bFailed = true;
+		Resolution.bRechargeTurn = true;
+		Resolution.FailMessage = FText::Format(LOCTEXT("MustRecharge", "{0} must recharge!"),
+			QualifiedName(Attacker, Resolution.ActorDisplayName));
+		return Resolution;
+	}
+
 	// Everything that is not an attack resolves elsewhere. Brace is the one this
 	// library owns outright, because it is purely a damage modifier.
 	if (Action.ActionType != EGF_BattleActionType::Skill)
@@ -220,6 +231,13 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 	}
 
 	Resolution.SkillIndexToSpend = Action.SkillIndex;
+
+	if (SkillCDO->bFirstTurnOnly && Attacker->bHasActedSinceEntering)
+	{
+		Resolution.bFailed = true;
+		Resolution.FailMessage = LOCTEXT("NotFirstTurn", "But it failed!");
+		return Resolution;
+	}
 
 	if (Action.Targets.Num() == 0)
 	{
@@ -393,6 +411,25 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 				TargetResult.StatStages.Add(Planned);
 			}
 
+			// The list form: every target-side change lands on one roll per target.
+			if (SkillCDO->StatChanges.ContainsByPredicate(
+					[](const FGF_SkillStatChange& Change) { return !Change.bAffectsSelf && Change.Stages != 0; })
+				&& FMath::RandRange(1, 100) <= SkillCDO->StatStageChance)
+			{
+				for (const FGF_SkillStatChange& Change : SkillCDO->StatChanges)
+				{
+					if (Change.bAffectsSelf || Change.Stages == 0)
+					{
+						continue;
+					}
+
+					FGF_StatStageOutcome Planned;
+					Planned.Stat = Change.ToStatStage();
+					Planned.Requested = Change.Stages;
+					TargetResult.StatStages.Add(Planned);
+				}
+			}
+
 			if (SkillCDO->bIsTrappingSkill)
 			{
 				TargetResult.bTrapped = true;
@@ -482,8 +519,38 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 	Resolution.bCritStageRaised = SkillCDO->bRaisesCritStage;
 	Resolution.bSelfStatusCleared = SkillCDO->bIsRefresh && Attacker->Status != EGF_STATUS::None;
 
-	// Recorded here so ApplyResolution does not have to re-read the asset.
-	(void)bAnythingConnected;
+	// Dokimon rules. A Status skill's effects on the user always land; a damaging
+	// skill's only land when it connects, so a missed Mighty Mash raises nothing
+	// and a missed Dark Bond heals nothing.
+	const bool bSelfEffectsLand = SkillCDO->Split == EGF_SkillCategory::Status || bAnythingConnected;
+
+	if (bSelfEffectsLand
+		&& SkillCDO->StatChanges.ContainsByPredicate(
+			[](const FGF_SkillStatChange& Change) { return Change.bAffectsSelf && Change.Stages != 0; })
+		&& FMath::RandRange(1, 100) <= SkillCDO->StatStageChance)
+	{
+		for (const FGF_SkillStatChange& Change : SkillCDO->StatChanges)
+		{
+			if (!Change.bAffectsSelf || Change.Stages == 0)
+			{
+				continue;
+			}
+
+			FGF_StatStageOutcome Planned;
+			Planned.Stat = Change.ToStatStage();
+			Planned.Requested = Change.Stages;
+			Planned.bSelfInflicted = true;
+			Resolution.SelfStatStages.Add(Planned);
+		}
+	}
+
+	if (bSelfEffectsLand && SkillCDO->HealAmount > 0)
+	{
+		Resolution.SelfHeal += static_cast<float>(SkillCDO->HealAmount);
+	}
+
+	Resolution.bSelfStatsCleansed = bSelfEffectsLand && SkillCDO->bCleansesStatChanges;
+	Resolution.bWillRecharge = SkillCDO->bRequiresRecharge && bAnythingConnected;
 
 	return Resolution;
 }
@@ -507,6 +574,22 @@ bool UGF_BattleResolver::ApplyResolution(FGF_ActionResolution& Resolution)
 
 	AGF_Creature* Attacker = Resolution.ActorCreature;
 
+	// The recharge turn is the whole action: no Uses spent, no Protect streak
+	// touched, nothing else applied. Clearing the flag here, not at planning,
+	// keeps a plan that is never committed from cancelling the recharge.
+	if (Resolution.bRechargeTurn)
+	{
+		if (Attacker != nullptr)
+		{
+			Attacker->bMustRecharge = false;
+			Attacker->bHasActedSinceEntering = true;
+			Attacker->MarkAsMovedThisTurn();
+			Resolution.ActorHPAfter = Attacker->CurrentStats.CurrentHP;
+			Resolution.bActorDowned = Attacker->IsDowned();
+		}
+		return true;
+	}
+
 	if (Resolution.ActionType == EGF_BattleActionType::Brace)
 	{
 		ApplyBrace(Attacker);
@@ -522,6 +605,7 @@ bool UGF_BattleResolver::ApplyResolution(FGF_ActionResolution& Resolution)
 	if (Attacker != nullptr)
 	{
 		Attacker->MarkAsMovedThisTurn();
+		Attacker->bHasActedSinceEntering = true;
 	}
 
 	const AGF_SkillDefinition* SkillCDO =
@@ -659,6 +743,21 @@ bool UGF_BattleResolver::ApplyResolution(FGF_ActionResolution& Resolution)
 	// --- effects on the user ------------------------------------------------
 	if (Attacker != nullptr)
 	{
+		// Before this skill's own stat changes, so a skill that cleanses and then
+		// buffs ends up with the buff rather than wiping it.
+		if (Resolution.bSelfStatsCleansed)
+		{
+			if (UGF_CreatureStatStageComponent* Stages = Attacker->FindComponentByClass<UGF_CreatureStatStageComponent>())
+			{
+				Stages->ResetAllStatStages();
+			}
+		}
+
+		if (Resolution.bWillRecharge)
+		{
+			Attacker->bMustRecharge = true;
+		}
+
 		for (FGF_StatStageOutcome& Stage : Resolution.SelfStatStages)
 		{
 			Stage = ApplyStatStage(Attacker, Stage.Stat, Stage.Requested, /*bSelfInflicted*/ true);

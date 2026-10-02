@@ -1048,6 +1048,10 @@ bool UGF_BattleFlowComponent::IsSlotIncapacitated(const FGF_BattleSlot& Slot) co
 		|| Creature->Status == EGF_STATUS::Frozen
 		|| Creature->bIsFlinched
 		|| Creature->bTruantLoafingThisTurn;
+	// bMustRecharge is deliberately not here. The resolver turns the recharging
+	// creature's planned action into the recharge turn and clears the flag there;
+	// a performer that skipped planning for "incapacitated" slots would never
+	// clear it, and the creature would recharge forever.
 }
 
 bool UGF_BattleFlowComponent::CanFlee(EGF_BattleSide FleeingSide) const

@@ -4,6 +4,7 @@
 #include "GF_BattleManagementFunctions.h"
 #include "GF_CreatureStatLibrary.h"
 #include "GF_CreatureTraits.h"
+#include "GF_CreatureRules.h"
 #include "GF_Creature.h"
 #include "GF_ItemData.h"
 #include "GF_ItemDataManager.h"
@@ -497,20 +498,14 @@ bool UGF_BattleComponent::RollCriticalHit(
     if (bForceCriticalHit)
         return true;
 
-    // Crit stage table (classic):
-    //   Stage 0 → 1/16  (6.25%)   — normal move
-    //   Stage 1 → 1/8   (12.5%)   — high crit move OR Focus Energy
-    //   Stage 2 → 1/4   (25%)     — high crit move + Focus Energy
-    //   Stage 3 → 1/2   (50%)
-    //   Stage 4 → always crit
-    const int32 Stage = (Skill->isHighCritRatio ? 1 : 0) + FMath::Clamp(ExtraCritStage, 0, 4);
+    // Dokimon crit table, from Project Settings > Creature Rules:
+    //   Stage 0 → 10%  — normal move
+    //   Stage 1 → 35%  — high crit move OR a crit-stage boost
+    //   further stages climb the rest of the table; past its end is its last entry.
+    const int32 Stage = (Skill->isHighCritRatio ? 1 : 0) + FMath::Max(ExtraCritStage, 0);
+    const float ChancePercent = UGF_CreatureRulesSettings::GetCritChancePercent(Stage);
 
-    if (Stage >= 4)
-        return true;
-
-    // Each stage halves the denominator: 16 >> Stage
-    const int32 CritChance = 16 >> Stage;   // 16, 8, 4, 2
-    return FMath::RandRange(1, CritChance) == 1;
+    return FMath::FRandRange(0.0f, 100.0f) < ChancePercent;
 }
 
 float UGF_BattleComponent::GetWeatherModifier(EGF_Element SkillElement, EGF_WeatherType Weather) const
@@ -1472,15 +1467,14 @@ bool UGF_BattleComponent::ApplyProtect(AGF_Creature* User)
     if (!User)
         return false;
 
-    // Each consecutive use halves the success chance (classic mechanic).
-    // Count=0 → 100%, Count=1 → 50%, Count=2 → 25%, etc.
+    // Dokimon decay, from Project Settings > Creature Rules:
+    // Count=0 → 100%, Count=1 → 50%, Count=2 → 25%, then it always fails.
     const int32 Count = User->ConsecutiveProtectCount;
     if (Count > 0)
     {
-        // Probability = 100 / 2^Count, minimum 1 out of 65536 (treat as never for simplicity)
-        float SuccessChance = 100.0f / FMath::Pow(2.0f, static_cast<float>(Count));
-        float Roll = FMath::FRandRange(0.0f, 100.0f);
-        if (Roll > SuccessChance)
+        const float SuccessChance = UGF_CreatureRulesSettings::GetProtectChancePercent(Count);
+        const float Roll = FMath::FRandRange(0.0f, 100.0f);
+        if (SuccessChance <= 0.0f || Roll > SuccessChance)
         {
             UE_LOG(LogTemp, Log, TEXT("ApplyProtect: Protect failed (consecutive use %d, chance %.1f%%)"), Count, SuccessChance);
             return false;

@@ -81,7 +81,7 @@ float BattleManagementFunctions::CalculateDamage(const FGF_CreatureInstanceData&
     float Random = FMath::FRandRange(0.85f, 1.0f);
 
     // 5. STAB (Same Type Attack Bonus)
-    EGF_Element SkillElement = EGF_Element::Neutral; // TODO: Get from Skill->Type
+    EGF_Element SkillElement = Skill->Type;
     float STAB = GetSTABBonus(SkillElement, AttackerSpecies->PrimaryElement, AttackerSpecies->SecondaryElement, false);
 
     // 6. Type Effectiveness (0, 0.25, 0.5, 1, 2, or 4)

@@ -287,6 +287,22 @@ struct GAMMAFRAMEWORKBATTLE_API FGF_ActionResolution
 	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
 	bool bSelfStatusCleared = false;
 
+	/** The user's stat stages were all reset to 0 (Purify, Glacial Embrace). */
+	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
+	bool bSelfStatsCleansed = false;
+
+	/**
+	 * This turn was spent recharging from last turn's recharge skill. The plan
+	 * is also marked bFailed, with the "must recharge" line as its FailMessage,
+	 * so a flow that only checks bFailed still shows the right thing.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
+	bool bRechargeTurn = false;
+
+	/** The skill connected and the user must recharge on its next turn. */
+	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
+	bool bWillRecharge = false;
+
 	/** Protect went up this round. False when the consecutive-use roll failed. */
 	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
 	bool bProtectSucceeded = false;
