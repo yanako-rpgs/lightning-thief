@@ -102,11 +102,11 @@ public:
 
     // Gameplay legality bounds.
     static constexpr int32 MaxLevel = 100;
-    static constexpr int32 MaxPotential = 31;
-    static constexpr int32 MaxTrainingPerStat = 255;
-    static constexpr int32 MaxTrainingTotal = 510;
+    static constexpr int32 MaxAP = FGF_CreatureInstanceData::MaxAP;
     static constexpr int32 MaxSkills = 4;
-    static constexpr int32 MaxBond = 255;
+    static constexpr int32 MaxAffinity = FGF_CreatureInstanceData::MaxAffinity;
+    // EPs have no fixed cap: their total must fit the creature's own level
+    // (FGF_CreatureInstanceData::GetEPBudget), which ValidateCreature checks.
     static constexpr int32 MaxNameChars = 12;
 
     // Tamer-memo place names are prose ("Fernhollow Woods", "Sanctuary Couple"), so

@@ -350,14 +350,14 @@ UGF_CreatureSpeciesData* UGF_BreedingLibrary::ResolveEggSpecies(const UObject* W
 // EGG CREATION
 //--------------------
 
-void UGF_BreedingLibrary::InheritPotentials(const FGF_CreatureInstanceData& Mother, const FGF_CreatureInstanceData& Father,
+void UGF_BreedingLibrary::InheritAPs(const FGF_CreatureInstanceData& Mother, const FGF_CreatureInstanceData& Father,
 	FGF_CreatureInstanceData& Egg)
 {
 	// Order matters only in that it must match the switch below.
-	const int32 MotherPotentials[6] = { Mother.HP_Potential, Mother.Attack_Potential, Mother.Defense_Potential,
-		Mother.Magic_Potential, Mother.Poise_Potential, Mother.Speed_Potential };
-	const int32 FatherPotentials[6] = { Father.HP_Potential, Father.Attack_Potential, Father.Defense_Potential,
-		Father.Magic_Potential, Father.Poise_Potential, Father.Speed_Potential };
+	const int32 MotherPotentials[6] = { Mother.HP_AP, Mother.Attack_AP, Mother.Defense_AP,
+		Mother.Magic_AP, Mother.Poise_AP, Mother.Speed_AP };
+	const int32 FatherPotentials[6] = { Father.HP_AP, Father.Attack_AP, Father.Defense_AP,
+		Father.Magic_AP, Father.Poise_AP, Father.Speed_AP };
 
 	// Pick three DISTINCT stats. classic has a bug here that lets the same stat be
 	// chosen twice (so some eggs inherit only two); this picks three properly.
@@ -373,12 +373,12 @@ void UGF_BreedingLibrary::InheritPotentials(const FGF_CreatureInstanceData& Moth
 
 		switch (Stat)
 		{
-		case 0: Egg.HP_Potential = Value; break;
-		case 1: Egg.Attack_Potential = Value; break;
-		case 2: Egg.Defense_Potential = Value; break;
-		case 3: Egg.Magic_Potential = Value; break;
-		case 4: Egg.Poise_Potential = Value; break;
-		case 5: Egg.Speed_Potential = Value; break;
+		case 0: Egg.HP_AP = Value; break;
+		case 1: Egg.Attack_AP = Value; break;
+		case 2: Egg.Defense_AP = Value; break;
+		case 3: Egg.Magic_AP = Value; break;
+		case 4: Egg.Poise_AP = Value; break;
+		case 5: Egg.Speed_AP = Value; break;
 		default: break;
 		}
 	}
@@ -412,7 +412,7 @@ void UGF_BreedingLibrary::PushEggSkill(FGF_CreatureInstanceData& Egg, const TSof
 		}
 	}
 
-	if (Egg.Skills.Num() < 4)
+	if (Egg.CanLearnMoreSkills())
 	{
 		Egg.Skills.Add(Skill);
 		Egg.CurrentUses.Add(SkillUses);
@@ -550,7 +550,7 @@ FGF_CreatureInstanceData UGF_BreedingLibrary::BuildGiftEgg(const UObject* WorldC
 		? EggCyclesOverride
 		: FMath::Max(1, Species->EggCycles);
 	Egg.EggAppearanceType = EggAppearanceType;
-	Egg.Bond = 120;
+	Egg.Affinity = 0;
 	Egg.StatusCondition = EGF_STATUSEffect::None;
 
 	// An egg carries the downed flag so every battle check skips it — see
@@ -614,7 +614,7 @@ FGF_CreatureInstanceData UGF_BreedingLibrary::BuildEgg(const UObject* WorldConte
 	// moveset is layered on top of that below.
 	Egg.Initialize(BabySpecies, 5, TArray<TSubclassOf<AGF_SkillDefinition>>(), OTName, OTID);
 
-	InheritPotentials(Mother, SkillParent, Egg);
+	InheritAPs(Mother, SkillParent, Egg);
 	InheritTemperament(Mother, Egg);
 	BuildEggSkillset(SkillParent, OtherParent, BabySpecies, Egg);
 
@@ -640,7 +640,7 @@ FGF_CreatureInstanceData UGF_BreedingLibrary::BuildEgg(const UObject* WorldConte
 	Egg.bIsEgg = true;
 	Egg.EggSpeciesName = BabySpecies->SpeciesName;
 	Egg.EggCyclesRemaining = FMath::Max(1, BabySpecies->EggCycles);
-	Egg.Bond = 120;
+	Egg.Affinity = 0;
 	Egg.StatusCondition = EGF_STATUSEffect::None;
 
 	// An egg carries the downed flag so every battle check skips it — see
@@ -706,7 +706,7 @@ bool UGF_BreedingLibrary::HatchEggInstance(const UObject* WorldContextObject, FG
 	Egg.EggUniqueRolls = 1;
 
 	// A hatched Creature starts noticeably friendlier than a caught one.
-	Egg.Bond = 120;
+	Egg.Affinity = 0;
 	Egg.Level = FMath::Max(5, Egg.Level);
 	Egg.CurrentEXP = 0;
 	Egg.bIsDowned = false;

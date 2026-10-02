@@ -19,7 +19,7 @@ class UGF_CreatureManagerSubsystem;
  * dragging the sanctuary's save state along.
  *
  * Everything here follows the classic rules unless a comment says
- * otherwise. The one deliberate deviation is Potential inheritance: the original has a
+ * otherwise. The one deliberate deviation is AP inheritance: the original has a
  * well-known bug where it can pick the same stat twice, and this picks three
  * genuinely distinct stats instead.
  */
@@ -121,7 +121,7 @@ public:
 	//--------------------
 
 	/**
-	 * Builds the actual egg from two parents: species, inherited Potentials, inherited
+	 * Builds the actual egg from two parents: species, inherited APs, inherited
 	 * nature (AnchorStone), and the four-stage egg moveset. The result is a level 5
 	 * Creature with bIsEgg set and its egg cycles primed.
 	 *
@@ -140,7 +140,7 @@ public:
 	 * or an event, so Bloomsprite, Aurelis and other unbreedable species are all fair game.
 	 * BuildEgg would refuse them.
 	 *
-	 * Potentials and nature are rolled fresh (nothing to inherit from). The Creature inside
+	 * APs and nature are rolled fresh (nothing to inherit from). The Creature inside
 	 * knows whatever it naturally would at level 5, unless you pass StartingSkills.
 	 *
 	 * @param Species            What's inside. Pass the species itself, not a baby form —
@@ -180,7 +180,7 @@ public:
 
 	/**
 	 * Turns an egg into the Creature inside it: clears the egg flags, restores the
-	 * real display name, sets bond to the classic hatch value of 120 and fills
+	 * real display name, leaves affinity at 0 (every creature starts there) and fills
 	 * in HP. Returns false if the entry wasn't an egg.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Creature|Breeding", meta = (WorldContext = "WorldContextObject"))
@@ -191,7 +191,7 @@ private:
 	static UGF_CreatureManagerSubsystem* GetManager(const UObject* WorldContextObject);
 
 	/** Three distinct stats inherited from a random parent each; the rest rolled fresh. */
-	static void InheritPotentials(const FGF_CreatureInstanceData& Mother, const FGF_CreatureInstanceData& Father,
+	static void InheritAPs(const FGF_CreatureInstanceData& Mother, const FGF_CreatureInstanceData& Father,
 		FGF_CreatureInstanceData& Egg);
 
 	/** classic AnchorStone rule: mother holding an AnchorStone has a 50% chance to pass her nature. */

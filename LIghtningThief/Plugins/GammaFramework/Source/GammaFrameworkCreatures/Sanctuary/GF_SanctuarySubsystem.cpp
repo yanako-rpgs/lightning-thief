@@ -640,7 +640,7 @@ void UGF_SanctuarySubsystem::ApplySanctuaryGrowth(int32 SlotIndex, FGF_CreatureI
 				}
 			}
 
-			if (Mon.Skills.Num() >= 4)
+			if (Mon.Skills.Num() >= Mon.GetSkillSlotCount())
 			{
 				OutForgottenSkills.Add(Mon.Skills[0]);
 

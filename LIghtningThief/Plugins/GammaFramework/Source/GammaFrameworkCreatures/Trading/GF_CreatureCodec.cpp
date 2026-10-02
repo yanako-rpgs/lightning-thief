@@ -164,57 +164,48 @@ bool UGF_CreatureCodec::ValidateCreature(const FGF_CreatureInstanceData& Creatur
         return false;
     }
 
-    // Potentials.
-    const TArray<TPair<const TCHAR*, int32>> Potentials = {
-        { TEXT("HP"),              Creature.HP_Potential },
-        { TEXT("Attack"),          Creature.Attack_Potential },
-        { TEXT("Defense"),         Creature.Defense_Potential },
-        { TEXT("Special Attack"),  Creature.Magic_Potential },
-        { TEXT("Special Defense"), Creature.Poise_Potential },
-        { TEXT("Speed"),           Creature.Speed_Potential }
+    // APs.
+    const TArray<TPair<const TCHAR*, int32>> APs = {
+        { TEXT("HP"),      Creature.HP_AP },
+        { TEXT("Attack"),  Creature.Attack_AP },
+        { TEXT("Defense"), Creature.Defense_AP },
+        { TEXT("Magic"),   Creature.Magic_AP },
+        { TEXT("Poise"),   Creature.Poise_AP },
+        { TEXT("Speed"),   Creature.Speed_AP }
     };
 
-    for (const TPair<const TCHAR*, int32>& Potential : Potentials)
+    for (const TPair<const TCHAR*, int32>& AP : APs)
     {
-        if (Potential.Value < 0 || Potential.Value > MaxPotential)
+        if (AP.Value < 0 || AP.Value > MaxAP)
         {
-            OutError = FString::Printf(TEXT("%s Potential of %d is outside 0-%d."), Potential.Key, Potential.Value, MaxPotential);
+            OutError = FString::Printf(TEXT("%s AP of %d is outside 0-%d."), AP.Key, AP.Value, MaxAP);
             return false;
         }
     }
 
-    // Training, per stat and in total.
-    const TArray<TPair<const TCHAR*, int32>> Training = {
-        { TEXT("HP"),              Creature.HP_Training },
-        { TEXT("Attack"),          Creature.Attack_Training },
-        { TEXT("Defense"),         Creature.Defense_Training },
-        { TEXT("Special Attack"),  Creature.Magic_Training },
-        { TEXT("Special Defense"), Creature.Poise_Training },
-        { TEXT("Speed"),           Creature.Speed_Training }
-    };
-
-    int32 TotalTraining = 0;
-    for (const TPair<const TCHAR*, int32>& TrainingValue : Training)
+    // EPs: none negative, and no more spent than the level has earned.
+    if (Creature.HP_EP < 0 || Creature.Attack_EP < 0 || Creature.Defense_EP < 0
+        || Creature.Magic_EP < 0 || Creature.Poise_EP < 0 || Creature.Speed_EP < 0)
     {
-        if (TrainingValue.Value < 0 || TrainingValue.Value > MaxTrainingPerStat)
-        {
-            OutError = FString::Printf(TEXT("%s TrainingValue of %d is outside 0-%d."), TrainingValue.Key, TrainingValue.Value, MaxTrainingPerStat);
-            return false;
-        }
-        TotalTraining += TrainingValue.Value;
+        OutError = TEXT("Has a negative EP.");
+        return false;
     }
 
-    if (TotalTraining > MaxTrainingTotal)
+    if (Creature.GetTotalEP() > Creature.GetEPBudget())
     {
-        OutError = FString::Printf(TEXT("Total Training of %d exceed the %d cap."), TotalTraining, MaxTrainingTotal);
+        OutError = FString::Printf(TEXT("Has %d EP allocated, but only %d earned at level %d."),
+            Creature.GetTotalEP(), Creature.GetEPBudget(), Creature.Level);
         return false;
     }
 
     // Skills. An egg has none yet; anything else needs at least one, or it would
-    // arrive unable to act and unable to LastResort out of it.
-    if (Creature.Skills.Num() > MaxSkills)
+    // arrive unable to act and unable to LastResort out of it. The limit is the
+    // slots open at the creature's level, never more than MaxSkills.
+    const int32 SkillLimit = FMath::Min(MaxSkills, Creature.GetSkillSlotCount());
+    if (Creature.Skills.Num() > SkillLimit)
     {
-        OutError = FString::Printf(TEXT("Knows %d moves, limit is %d."), Creature.Skills.Num(), MaxSkills);
+        OutError = FString::Printf(TEXT("Knows %d moves, limit at level %d is %d."),
+            Creature.Skills.Num(), Creature.Level, SkillLimit);
         return false;
     }
 
@@ -258,10 +249,10 @@ bool UGF_CreatureCodec::ValidateCreature(const FGF_CreatureInstanceData& Creatur
         }
     }
 
-    // Bond.
-    if (Creature.Bond < 0 || Creature.Bond > MaxBond)
+    // Affinity.
+    if (Creature.Affinity < 0 || Creature.Affinity > MaxAffinity)
     {
-        OutError = FString::Printf(TEXT("Bond of %d is outside 0-%d."), Creature.Bond, MaxBond);
+        OutError = FString::Printf(TEXT("Affinity of %d is outside 0-%d."), Creature.Affinity, MaxAffinity);
         return false;
     }
 
