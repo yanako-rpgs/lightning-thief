@@ -5,6 +5,22 @@
 #include "GF_BattleBridge.h"
 #include "GF_CreatureTraits.h"
 
+EGF_StatStages FGF_SkillStatChange::ToStatStage() const
+{
+	const bool bUp = Stages > 0;
+	switch (Stat)
+	{
+		case EGF_BattleStat::Attack:   return bUp ? EGF_StatStages::AttackUp   : EGF_StatStages::AttackDown;
+		case EGF_BattleStat::Defense:  return bUp ? EGF_StatStages::DefenseUp  : EGF_StatStages::DefenseDown;
+		case EGF_BattleStat::Magic:    return bUp ? EGF_StatStages::MagicUp    : EGF_StatStages::MagicDown;
+		case EGF_BattleStat::Poise:    return bUp ? EGF_StatStages::PoiseUp    : EGF_StatStages::PoiseDown;
+		case EGF_BattleStat::Speed:    return bUp ? EGF_StatStages::SpeedUp    : EGF_StatStages::SpeedDown;
+		case EGF_BattleStat::Accuracy: return bUp ? EGF_StatStages::AccuracyUp : EGF_StatStages::AccuracyDown;
+		case EGF_BattleStat::Evasion:  return bUp ? EGF_StatStages::EvasionUp  : EGF_StatStages::EvasionDown;
+		default:                       return EGF_StatStages::None;
+	}
+}
+
 // Sets default values
 AGF_SkillDefinition::AGF_SkillDefinition()
 {

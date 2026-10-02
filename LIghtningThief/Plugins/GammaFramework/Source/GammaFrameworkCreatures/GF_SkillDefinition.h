@@ -63,6 +63,44 @@ enum class EGF_SemiInvulnerableState : uint8
     PhaseShifted     UMETA(DisplayName = "Phase Shifted"),
 };
 
+/** A battle stat a skill can push up or down, without a direction baked in. */
+UENUM(BlueprintType)
+enum class EGF_BattleStat : uint8
+{
+	Attack		UMETA(DisplayName = "Attack"),
+	Defense		UMETA(DisplayName = "Defense"),
+	Magic		UMETA(DisplayName = "Magic"),
+	Poise		UMETA(DisplayName = "Poise"),
+	Speed		UMETA(DisplayName = "Speed"),
+	Accuracy	UMETA(DisplayName = "Accuracy"),
+	Evasion		UMETA(DisplayName = "Evasion")
+};
+
+/**
+ * One stat change a skill makes. A skill can carry any number of these, on the
+ * user and on the target at once -- Pep Talk raises three stats and lowers two,
+ * Dark Toll lowers the target's attacks while raising the user's.
+ */
+USTRUCT(BlueprintType)
+struct GAMMAFRAMEWORKCREATURES_API FGF_SkillStatChange
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat Change")
+	EGF_BattleStat Stat = EGF_BattleStat::Attack;
+
+	/** Stages to move: positive raises, negative lowers. Stages cap at -6 and +6. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat Change", meta = (ClampMin = "-6", ClampMax = "6"))
+	int32 Stages = 1;
+
+	/** True changes the user's stat, false the target's. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stat Change")
+	bool bAffectsSelf = true;
+
+	/** The direction-carrying stage this change applies as, e.g. Attack +1 -> AttackUp. */
+	EGF_StatStages ToStatStage() const;
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FGF_OnStatStageApplied, EGF_StatStages, StatType, int32, StageChange, bool, bAffectedSelf);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGF_OnFlinchApplied);
 
@@ -147,7 +185,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Does the user take recoil damage from this move? Ironskull cancels it. Take Down, Double-Edge, Submission, LastResort.", Category = "Traits"))
 	bool bHasRecoil = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Percentage of the damage DEALT that comes back as recoil. Take Down/Submission = 25, Double-Edge = 33.", Category = "Traits", EditCondition = "bHasRecoil", ClampMin = "0", ClampMax = "100"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Percentage of the USER'S MAX HP lost as recoil when the skill deals damage. Cannonball = 25, Teardown = 20.", Category = "Traits", EditCondition = "bHasRecoil", ClampMin = "0", ClampMax = "100"))
 	float RecoilPercentage = 25.0f;
 
 
@@ -183,6 +221,41 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Number of stages to change (positive increases, negative decreases). Range: -6 to +6", Category = "Skill Information", EditCondition = "bAffectsStatStage", ClampMin = "-6", ClampMax = "6"))
 	int32 StatStageAmount = -1;
+
+	/**
+	 * Every stat change this skill makes, on the user and the target, all landing
+	 * on one Stat Stage Chance roll. Works alongside the single-stat fields above;
+	 * Dokimon moves use this list and leave those off.
+	 *
+	 * On a damaging skill the changes need the hit to connect. On a Status skill
+	 * the user's own changes always land.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Stat changes on the user and/or target. All share the Stat Stage Chance roll.", Category = "Skill Information"))
+	TArray<FGF_SkillStatChange> StatChanges;
+
+	// ============================================
+	// DOKIMON MOVE RULES
+	// ============================================
+
+	/**
+	 * Flat HP the user recovers when it uses this skill. Not a percentage.
+	 * On a damaging skill (Dark Bond, Soul Drain) the heal needs the hit to
+	 * connect; on a Status skill (Healing Herbs) it always happens.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Flat HP the user heals. Damaging skills only heal if they connect.", Category = "Dokimon", ClampMin = "0"))
+	int32 HealAmount = 0;
+
+	/** Only usable on the user's first turn after entering battle (Surprise Attack, Early Bird). Fails otherwise. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Fails unless it is the user's first turn on the field.", Category = "Dokimon"))
+	bool bFirstTurnOnly = false;
+
+	/** If this skill connects, the user loses its next turn recharging (Charge Cannon, Dark Bond). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "The user must recharge next turn if this skill connects.", Category = "Dokimon"))
+	bool bRequiresRecharge = false;
+
+	/** Resets the user's stat stages to 0 (Purify, Glacial Embrace). Pair with Is Refresh to also cure status. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Clears all of the user's stat stage changes.", Category = "Dokimon"))
+	bool bCleansesStatChanges = false;
 
 	// ============================================
 	// CORE MOVE PROPERTIES
