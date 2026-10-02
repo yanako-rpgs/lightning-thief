@@ -475,9 +475,14 @@ float UGF_CreatureTraitLibrary::GetRecoilDamage(EGF_CreatureTrait AttackerTrait,
 		return 0.0f;
 	}
 
-	// LastResort-style "% of max HP" recoil is not used here - classic recoil moves all
-	// take a fraction of the damage they dealt.
-	const float Recoil = DamageDealt * (SkillCDO->RecoilPercentage / 100.0f);
+	// Dokimon recoil is a share of the user's MAX HP, not of the damage dealt, so a
+	// Cannonball costs the same whatever it hit. DamageDealt only gates it: callers
+	// pass 0 when nothing was hit, and a recoil skill that hit nothing costs nothing.
+	if (DamageDealt <= 0.0f)
+	{
+		return 0.0f;
+	}
+	const float Recoil = AttackerMaxHP * (SkillCDO->RecoilPercentage / 100.0f);
 
 	// Never less than 1 once a recoil move connects, never more than the user's max HP.
 	return FMath::Clamp(FMath::Max(1.0f, FMath::FloorToFloat(Recoil)), 0.0f, FMath::Max(1.0f, AttackerMaxHP));
@@ -1169,6 +1174,12 @@ void UGF_CreatureTraitLibrary::ResetTruantState(AGF_Creature* Creature)
 	{
 		// A Sluggard Creature always gets to act on the turn it comes out.
 		Creature->bTruantLoafingThisTurn = false;
+
+		// Same moment, same reason: runs on every send-out and switch-in, which is
+		// exactly when a creature's "first turn" restarts and a pending recharge
+		// stops mattering.
+		Creature->bHasActedSinceEntering = false;
+		Creature->bMustRecharge = false;
 	}
 }
 

@@ -140,12 +140,11 @@ float UGF_CatchingLibrary::GetCoreModifier(
 	{
 		case EGF_CoreType::SnareCore:
 		{
-			// 3.5x on Bug or Water types
+			// 3.5x on Water types
 			if (UGF_CreatureSpeciesData* Species = WildCreature.SpeciesData.LoadSynchronous())
 			{
 				const bool bBugOrWater =
-					Species->PrimaryElement   == EGF_Element::Chitin || Species->PrimaryElement   == EGF_Element::Tide ||
-					Species->SecondaryElement == EGF_Element::Chitin || Species->SecondaryElement == EGF_Element::Tide;
+					Species->PrimaryElement == EGF_Element::Water || Species->SecondaryElement == EGF_Element::Water;
 
 				if (bBugOrWater)
 					return 3.5f;

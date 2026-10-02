@@ -5,16 +5,14 @@
 #include "GF_ElementTypes.h"
 #include "GF_CreatureRules.generated.h"
 
-/**
- * The tunable half of the Dokimon: Lightning Thief creature rules -- how fast
- * affinity grows, when move slots open, how strong STAB is.
- *
- * Edit in Project Settings > Game > Gamma Framework Creature Rules.
- *
- * The fixed half (AP cap 50, affinity cap 100, 1 EP per level) lives on
- * FGF_CreatureInstanceData as constants, because save and trade validation
- * have to agree on them and must not drift with a config edit.
- */
+// The tunable half of the Dokimon: Lightning Thief creature rules -- how fast
+// affinity grows, when move slots open, how strong STAB is.
+//
+// Edit in Project Settings > Game > Gamma Framework Creature Rules.
+//
+// The fixed half (AP cap 50, affinity cap 100, 1 EP per level) lives on
+// FGF_CreatureInstanceData as constants, because save and trade validation
+// have to agree on them and must not drift with a config edit.
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Gamma Framework Creature Rules"))
 class GAMMAFRAMEWORKCREATURES_API UGF_CreatureRulesSettings : public UDeveloperSettings
 {
@@ -67,8 +65,36 @@ public:
 	float AdaptabilitySTABBonus = 0.5f;
 
 	// --------------------------------------------------------
+	// CRITICAL HITS
+	// --------------------------------------------------------
+
+	/**
+	 * Crit chance in percent by crit stage. Stage 0 is a normal move, stage 1 a
+	 * high-crit move (or one crit-stage boost), and so on. Stages past the end
+	 * use the last entry.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Critical Hits")
+	TArray<float> CritChancePercentByStage = { 10.0f, 35.0f, 50.0f, 75.0f, 100.0f };
+
+	// --------------------------------------------------------
+	// PROTECT
+	// --------------------------------------------------------
+
+	/**
+	 * Success chance in percent of Protect by how many times in a row it has
+	 * already succeeded. 100, then 50, then 25, then it always fails. Past the end
+	 * uses 0.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Protect")
+	TArray<float> ProtectChancePercentByStreak = { 100.0f, 50.0f, 25.0f };
+
+	// --------------------------------------------------------
 	// HELPERS
 	// --------------------------------------------------------
+
+	static float GetCritChancePercent(int32 Stage);
+
+	static float GetProtectChancePercent(int32 ConsecutiveUses);
 
 	/** Hard ceiling on move slots. Nothing in the battle UI can show a fifth. */
 	static constexpr int32 MaxSkillSlots = 4;

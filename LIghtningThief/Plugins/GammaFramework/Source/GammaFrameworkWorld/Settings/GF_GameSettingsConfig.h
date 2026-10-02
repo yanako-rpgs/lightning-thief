@@ -8,14 +8,12 @@
 class USoundClass;
 class USoundMix;
 
-/**
- * Project-wide configuration behind the options screen.
- * Edit in Project Settings > Game > Gamma Framework Settings.
- *
- * Nothing here is player state. The player's chosen values live in
- * UGF_SettingsSubsystem / its "GEOptions" save slot; this asset only describes
- * what the options MEAN (which textures, how fast "Fast" is, what Hard does).
- */
+// Project-wide configuration behind the options screen.
+// Edit in Project Settings > Game > Gamma Framework Settings.
+//
+// Nothing here is player state. The player's chosen values live in
+// UGF_SettingsSubsystem / its "GEOptions" save slot; this asset only describes
+// what the options MEAN (which textures, how fast "Fast" is, what Hard does).
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "Gamma Framework Settings"))
 class GAMMAFRAMEWORKWORLD_API UGF_GameSettingsConfig : public UDeveloperSettings
 {

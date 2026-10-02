@@ -219,7 +219,7 @@ public:
 
 	/**
 	 * Recoil the attacker takes from a recoil move — 0 with Ironskull.
-	 * Reads bHasRecoil / RecoilPercentage off the move.
+	 * RecoilPercentage of the attacker's MAX HP, paid only when DamageDealt > 0.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Creature|Traits|Damage")
 	static float GetRecoilDamage(EGF_CreatureTrait AttackerTrait, TSubclassOf<AGF_SkillDefinition> Skill, float DamageDealt, float AttackerMaxHP);

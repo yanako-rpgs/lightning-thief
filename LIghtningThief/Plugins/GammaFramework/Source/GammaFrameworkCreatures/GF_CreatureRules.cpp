@@ -16,6 +16,22 @@ int32 UGF_CreatureRulesSettings::GetSkillSlotsForLevel(int32 Level)
 	return FMath::Clamp(Slots, 1, MaxSkillSlots);
 }
 
+float UGF_CreatureRulesSettings::GetCritChancePercent(int32 Stage)
+{
+	const TArray<float>& Table = GetDefault<UGF_CreatureRulesSettings>()->CritChancePercentByStage;
+	if (Table.Num() == 0)
+	{
+		return 0.0f;
+	}
+	return Table[FMath::Clamp(Stage, 0, Table.Num() - 1)];
+}
+
+float UGF_CreatureRulesSettings::GetProtectChancePercent(int32 ConsecutiveUses)
+{
+	const TArray<float>& Table = GetDefault<UGF_CreatureRulesSettings>()->ProtectChancePercentByStreak;
+	return Table.IsValidIndex(ConsecutiveUses) ? Table[ConsecutiveUses] : 0.0f;
+}
+
 float UGF_CreatureRulesSettings::GetSTABMultiplier(EGF_Element SkillElement, EGF_Element Primary, EGF_Element Secondary,
 	bool bHasAdaptability)
 {
