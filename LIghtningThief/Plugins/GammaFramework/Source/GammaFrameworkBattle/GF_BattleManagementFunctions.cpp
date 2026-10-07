@@ -160,7 +160,7 @@ int32 BattleManagementFunctions::CalculateStat(
 {
     // Clamp AP and EP values
     AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
-    EP = FMath::Max(EP, 0);
+    EP = FGF_CreatureInstanceData::GetEPStatBonus(EP);
 
     if (bIsHP)
     {

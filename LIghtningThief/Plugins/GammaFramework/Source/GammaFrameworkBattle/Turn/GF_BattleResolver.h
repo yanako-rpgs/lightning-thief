@@ -384,10 +384,10 @@ struct GAMMAFRAMEWORKBATTLE_API FGF_ChipDamageConfig
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float BurnFraction = 0.125f;
+	float BurnFraction = 1.0f / 14.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float PoisonFraction = 0.125f;
+	float PoisonFraction = 1.0f / 9.0f;
 
 	/** Sandstorm and Hail. Nothing ignores sand; Ice ignores hail. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
@@ -445,6 +445,36 @@ public:
 		const FGF_BattleAction& Action,
 		EGF_WeatherType Weather = EGF_WeatherType::None);
 
+	/**
+	 * The line that opens a turn: "Duskmaw used Gnash!".
+	 *
+	 * Reads only what the plan already knows, so it is safe before anything is
+	 * applied -- OnTurnAnnounced is where it belongs. A recharge turn says its
+	 * own thing; a Flee is announced as an attempt and a skill that is going to
+	 * fail is still announced as used, with the verdict left to
+	 * BuildActionMessages.
+	 *
+	 * Empty when there is nothing to name -- an unset action, or a plan that
+	 * failed before it had a skill. BuildActionMessages carries the FailMessage
+	 * for those.
+	 */
+	UFUNCTION(BlueprintPure, Category = "GammaFramework | Battle | Resolve")
+	static FText BuildAnnounceMessage(const FGF_ActionResolution& Plan);
+
+	/**
+	 * The result lines for a turn, in the order they should print: what
+	 * happened to each target, then what came back on the user. A Flee's
+	 * verdict, flinches and downs are all here.
+	 *
+	 * Wants an APPLIED plan -- the one OnActionResolved hands over. Status,
+	 * stat-stage, flinch and down lines are decided during application, so a
+	 * plan that has only been planned yields the hit lines and nothing else.
+	 *
+	 * Never repeats BuildAnnounceMessage, so the two can feed the same text box.
+	 */
+	UFUNCTION(BlueprintPure, Category = "GammaFramework | Battle | Resolve")
+	static TArray<FText> BuildActionMessages(const FGF_ActionResolution& Plan);
+
 	//==================================================================================
 	// END OF ROUND
 	//==================================================================================
@@ -483,6 +513,16 @@ public:
 		const UGF_BattleBoard* Board,
 		EGF_WeatherType Weather,
 		const FGF_ChipDamageConfig& Config);
+
+	/**
+	 * Every tick's Messages as one list, in tick order, with a down line after
+	 * any creature the tick finished off.
+	 *
+	 * For a text box that just prints lines and does not care which creature
+	 * each one belongs to. Quiet ticks contribute nothing.
+	 */
+	UFUNCTION(BlueprintPure, Category = "GammaFramework | Battle | Resolve")
+	static TArray<FText> BuildRoundEndMessages(const TArray<FGF_RoundEndTick>& Ticks);
 
 	//==================================================================================
 	// PIECES

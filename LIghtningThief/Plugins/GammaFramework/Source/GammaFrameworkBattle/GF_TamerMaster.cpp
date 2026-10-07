@@ -228,6 +228,9 @@ void AGF_TamerMaster::InitializeTeam()
 		FGF_CreatureInstanceData InstanceData;
 		InstanceData.Initialize(SetupSpecies, Setup.Level, Setup.ForcedSkills, TamerName, TamerID);
 
+		// A tamer's team rolls 15-40 a stat, not the spread a caught creature gets.
+		InstanceData.RollAPs(FGF_CreatureInstanceData::EAPRoll::Tamer);
+
 		// Apply preset overrides — ensures consistent stats/gender across battles
 		if (Setup.bPresetGender)
 			InstanceData.Gender = Setup.Gender;
@@ -235,7 +238,7 @@ void AGF_TamerMaster::InitializeTeam()
 		if (Setup.bPresetTemperament)
 			InstanceData.Temperament = Setup.Temperament;
 
-		// Only ever forces unique ON — a false here leaves the 1/4096 roll alone.
+		// Only ever forces unique ON — a false here leaves the normal roll alone.
 		if (Setup.bForceUnique)
 			InstanceData.bIsUnique = true;
 
@@ -247,6 +250,7 @@ void AGF_TamerMaster::InitializeTeam()
 			InstanceData.Magic_AP  = Setup.Magic_AP;
 			InstanceData.Poise_AP = Setup.Poise_AP;
 			InstanceData.Speed_AP          = Setup.Speed_AP;
+			InstanceData.RefreshAffinity();
 		}
 
 		//Apply the HeldItem if there was one, otherwise do nothing

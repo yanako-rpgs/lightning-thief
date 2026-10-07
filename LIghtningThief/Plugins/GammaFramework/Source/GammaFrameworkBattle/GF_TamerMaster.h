@@ -82,7 +82,7 @@ struct FGF_TamerCreatureSetup
 	EGF_Temperament Temperament = EGF_Temperament::Robust;
 
 	// Forces this Creature to be unique. Leaving it false does NOT force it non-unique —
-	// the normal 1/4096 roll from Initialize() still stands, so a tamer can luck into one.
+	// the normal 1/777 roll from Initialize() still stands, so a tamer can luck into one.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Preset")
 	bool bForceUnique = false;
 

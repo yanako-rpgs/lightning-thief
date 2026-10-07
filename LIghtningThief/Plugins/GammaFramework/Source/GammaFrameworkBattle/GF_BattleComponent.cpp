@@ -290,14 +290,14 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamage(
     DefenseStat = FMath::Max(1.0f, DefenseStat);
 
     //====================================================================================
-    // STEP 6: GEN 3 DAMAGE FORMULA
+    // STEP 6: DOKIMON DAMAGE FORMULA
     //====================================================================================
-    // Formula: floor((floor(2*Level/5 + 2) * BasePower * (Atk/Def)) / 50 + 2)
-    // Then multiply by all modifiers.
+    // Formula: ceil(((2*Level/5 + 2) * BasePower * Atk/Def / 50 + 2) * modifiers)
+    // Nothing is rounded until the very end.
 
     float Level       = static_cast<float>(Attacker.Level);
-    float LevelFactor = FMath::FloorToFloat((2.0f * Level) / 5.0f) + 2.0f;
-    float RawDamage   = FMath::FloorToFloat((LevelFactor * Skill->Power * (AttackStat / DefenseStat)) / 50.0f) + 2.0f;
+    float LevelFactor = (2.0f * Level) / 5.0f + 2.0f;
+    float RawDamage   = (LevelFactor * Skill->Power * (AttackStat / DefenseStat)) / 50.0f + 2.0f;
 
     // STAB (Same Type Attack Bonus) — stronger for single-element attackers
     UGF_CreatureSpeciesData* AttackerSpecies = Attacker.SpeciesData.IsNull()
@@ -309,11 +309,11 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamage(
             SkillElement, AttackerSpecies->PrimaryElement, AttackerSpecies->SecondaryElement);
     }
 
-    // Critical hit is 2x in classic
+    // Critical hit is 2x
     float CritMod = Result.bWasCritical ? 2.0f : 1.0f;
 
-    // Random damage roll (85–100%)
-    float RandomFactor = FMath::FRandRange(0.85f, 1.0f);
+    // Random damage roll (85–110%)
+    float RandomFactor = FMath::FRandRange(0.85f, 1.10f);
 
     float BaseDamage = RawDamage * CritMod * STAB * Result.TypeEffectiveness * WeatherModifier * RandomFactor;
 
@@ -350,7 +350,7 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamage(
     // STEP 9: FINAL DAMAGE & MESSAGE
     //====================================================================================
 
-    Result.Damage = FMath::Max(1.0f, FMath::FloorToFloat(BaseDamage));
+    Result.Damage = FMath::Max(1.0f, FMath::CeilToFloat(BaseDamage));
 
     FString Message = FString::Printf(TEXT("%s dealt %.0f damage!"),
         *Attacker.GetDisplayName().ToString(),
@@ -482,9 +482,9 @@ bool UGF_BattleComponent::CheckSkillHit(
     // Clamp to reasonable range (can't go below 0% or above 100%)
     FinalAccuracy = FMath::Clamp(FinalAccuracy, 0.0f, 100.0f);
 
-    // Roll for hit
-    float Roll = FMath::FRandRange(0.0f, 100.0f);
-    return Roll <= FinalAccuracy;
+    // Dokimon hit chance is (ACC + 2) / 101, so 95 lands 96% of the time.
+    float Roll = FMath::FRandRange(0.0f, 101.0f);
+    return Roll < FinalAccuracy + 2.0f;
 }
 
 bool UGF_BattleComponent::RollCriticalHit(
@@ -499,8 +499,8 @@ bool UGF_BattleComponent::RollCriticalHit(
         return true;
 
     // Dokimon crit table, from Project Settings > Creature Rules:
-    //   Stage 0 → 10%  — normal move
-    //   Stage 1 → 35%  — high crit move OR a crit-stage boost
+    //   Stage 0 → 11 in 101  — normal move
+    //   Stage 1 → 31 in 101  — high crit move OR a crit-stage boost
     //   further stages climb the rest of the table; past its end is its last entry.
     const int32 Stage = (Skill->isHighCritRatio ? 1 : 0) + FMath::Max(ExtraCritStage, 0);
     const float ChancePercent = UGF_CreatureRulesSettings::GetCritChancePercent(Stage);
@@ -895,8 +895,10 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     DefenseStat = FMath::Max(1.0f, DefenseStat);
 
     //====================================================================================
-    // STEP 6: GEN 3 DAMAGE FORMULA
+    // STEP 6: DOKIMON DAMAGE FORMULA
     //====================================================================================
+    // Formula: ceil(((2*Level/5 + 2) * BasePower * Atk/Def / 50 + 2) * modifiers)
+    // Nothing is rounded until the very end.
 
     // Priority: explicit override (Rising Slash) > weight-based (Low Kick) > move's flat Power.
     float EffectivePower;
@@ -915,8 +917,8 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     }
 
     float Level       = static_cast<float>(Attacker.Level);
-    float LevelFactor = FMath::FloorToFloat((2.0f * Level) / 5.0f) + 2.0f;
-    float RawDamage   = FMath::FloorToFloat((LevelFactor * EffectivePower * (AttackStat / DefenseStat)) / 50.0f) + 2.0f;
+    float LevelFactor = (2.0f * Level) / 5.0f + 2.0f;
+    float RawDamage   = (LevelFactor * EffectivePower * (AttackStat / DefenseStat)) / 50.0f + 2.0f;
 
     // STAB
     UGF_CreatureSpeciesData* AttackerSpecies = Attacker.SpeciesData.IsNull()
@@ -929,7 +931,7 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     }
 
     float CritMod      = Result.bWasCritical ? 2.0f : 1.0f;
-    float RandomFactor = FMath::FRandRange(0.85f, 1.0f);
+    float RandomFactor = FMath::FRandRange(0.85f, 1.10f);
 
     float BaseDamage = RawDamage * CritMod * STAB * Result.TypeEffectiveness * WeatherModifier * RandomFactor;
 
@@ -972,7 +974,7 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
     // STEP 9: FINAL DAMAGE & MESSAGE
     //====================================================================================
 
-    Result.Damage = FMath::Max(1.0f, FMath::FloorToFloat(BaseDamage));
+    Result.Damage = FMath::Max(1.0f, FMath::CeilToFloat(BaseDamage));
 
     FString Message = FString::Printf(TEXT("%s dealt %.0f damage!"),
         *Attacker.GetDisplayName().ToString(), Result.Damage);
@@ -1468,17 +1470,13 @@ bool UGF_BattleComponent::ApplyProtect(AGF_Creature* User)
         return false;
 
     // Dokimon decay, from Project Settings > Creature Rules:
-    // Count=0 → 100%, Count=1 → 50%, Count=2 → 25%, then it always fails.
+    // Count=0 → 99%, Count=1 → 66.7%, Count=2 → 33.3%, then it always fails.
     const int32 Count = User->ConsecutiveProtectCount;
-    if (Count > 0)
+    const float SuccessChance = UGF_CreatureRulesSettings::GetProtectChancePercent(Count);
+    if (SuccessChance <= 0.0f || FMath::FRandRange(0.0f, 100.0f) >= SuccessChance)
     {
-        const float SuccessChance = UGF_CreatureRulesSettings::GetProtectChancePercent(Count);
-        const float Roll = FMath::FRandRange(0.0f, 100.0f);
-        if (SuccessChance <= 0.0f || Roll > SuccessChance)
-        {
-            UE_LOG(LogTemp, Log, TEXT("ApplyProtect: Protect failed (consecutive use %d, chance %.1f%%)"), Count, SuccessChance);
-            return false;
-        }
+        UE_LOG(LogTemp, Log, TEXT("ApplyProtect: Protect failed (consecutive use %d, chance %.1f%%)"), Count, SuccessChance);
+        return false;
     }
 
     User->bIsProtected = true;

@@ -2,6 +2,7 @@
 
 #include "GF_BattleBoard.h"
 #include "GF_Creature.h"
+#include "GF_CreatureRules.h"
 #include "GF_CreatureStatStageComponent.h"
 #include "GF_CreatureTraits.h"
 #include "GF_FlinchHelperLibrary.h"
@@ -546,7 +547,13 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 
 	if (bSelfEffectsLand && SkillCDO->HealAmount > 0)
 	{
-		Resolution.SelfHeal += static_cast<float>(SkillCDO->HealAmount);
+		// Dokimon heal: ceil((0.012 * Level * Heal + 2) * Rand * STAB). The user's
+		// stats play no part, only its level and whether the skill shares its element.
+		const float STAB = UGF_CreatureRulesSettings::GetSTABMultiplier(
+			SkillCDO->Type, Attacker->PrimaryElement, Attacker->SecondaryElement);
+
+		Resolution.SelfHeal += FMath::CeilToFloat(
+			(0.012f * Attacker->CurrentStats.Level * SkillCDO->HealAmount + 2.0f) * FMath::FRandRange(0.95f, 1.25f) * STAB);
 	}
 
 	Resolution.bSelfStatsCleansed = bSelfEffectsLand && SkillCDO->bCleansesStatChanges;
@@ -950,9 +957,10 @@ bool UGF_BattleResolver::TickSleepAtTurnStart(AGF_Creature* Creature, bool& bWok
 		return false;
 	}
 
-	Creature->SleepCounter = FMath::Max(0, Creature->SleepCounter - 1);
-
-	if (Creature->SleepCounter <= 0)
+	// Dokimon sleep: a flat chance to wake each turn, and the counter is only the
+	// cap on how many turns can be lost before it wakes regardless.
+	const float WakeChance = GetDefault<UGF_CreatureRulesSettings>()->SleepWakeChancePercent;
+	if (Creature->SleepCounter <= 0 || FMath::FRandRange(0.0f, 100.0f) < WakeChance)
 	{
 		Creature->ClearStatusCondition();
 		bWokeUp = true;
@@ -960,6 +968,7 @@ bool UGF_BattleResolver::TickSleepAtTurnStart(AGF_Creature* Creature, bool& bWok
 		return false;
 	}
 
+	--Creature->SleepCounter;
 	return true;
 }
 
@@ -1027,12 +1036,12 @@ FGF_RoundEndTick UGF_BattleResolver::ResolveRoundEndForSlot(
 		// --- status ---------------------------------------------------------
 		if (Creature->Status == EGF_STATUS::Burned && Config.BurnFraction > 0.0f)
 		{
-			Tick.StatusDamage = FMath::Max(1.0f, MaxHP * Config.BurnFraction);
+			Tick.StatusDamage = FMath::Max(1.0f, FMath::RoundToFloat(MaxHP * Config.BurnFraction));
 			Tick.Messages.Add(FText::Format(LOCTEXT("BurnTick", "The burn eats into {0}."), Name));
 		}
 		else if (Creature->Status == EGF_STATUS::Poisoned && Config.PoisonFraction > 0.0f)
 		{
-			Tick.StatusDamage = FMath::Max(1.0f, MaxHP * Config.PoisonFraction);
+			Tick.StatusDamage = FMath::Max(1.0f, FMath::RoundToFloat(MaxHP * Config.PoisonFraction));
 			Tick.Messages.Add(FText::Format(LOCTEXT("PoisonTick", "The venom works through {0}."), Name));
 		}
 
@@ -1110,6 +1119,307 @@ FGF_RoundEndTick UGF_BattleResolver::ResolveRoundEndForSlot(
 	}
 
 	return Tick;
+}
+
+FText UGF_BattleResolver::BuildAnnounceMessage(const FGF_ActionResolution& Plan)
+{
+	const FText Name = QualifiedName(Plan.ActorCreature, Plan.ActorDisplayName);
+
+	// The creature never got as far as choosing: the recharge line is the whole turn.
+	if (Plan.bRechargeTurn)
+	{
+		return Plan.FailMessage;
+	}
+
+	switch (Plan.ActionType)
+	{
+	case EGF_BattleActionType::Skill:
+	{
+		const AGF_SkillDefinition* SkillCDO = Plan.SkillClass ? Plan.SkillClass.GetDefaultObject() : nullptr;
+		if (SkillCDO == nullptr)
+		{
+			return FText::GetEmpty();
+		}
+
+		return FText::Format(LOCTEXT("AnnounceSkill", "{0} used {1}!"), Name, FText::FromName(SkillCDO->Name));
+	}
+
+	case EGF_BattleActionType::Brace:
+		return FText::Format(LOCTEXT("AnnounceBrace", "{0} braces for impact."), Name);
+
+	case EGF_BattleActionType::Flee:
+		// The attempt only. Whether it worked is a result, and BuildActionMessages
+		// reports it off the same roll.
+		return FText::Format(LOCTEXT("AnnounceFlee", "{0} tries to run!"), Name);
+
+	// The plan carries neither the item, the Core nor the arriving creature, so
+	// these cannot name them.
+	case EGF_BattleActionType::Item:
+		return FText::Format(LOCTEXT("AnnounceItem", "{0} uses an item."), Name);
+
+	case EGF_BattleActionType::Marque:
+		return FText::Format(LOCTEXT("AnnounceMarque", "{0} attempts a claim."), Name);
+
+	case EGF_BattleActionType::Swap:
+		return FText::Format(LOCTEXT("AnnounceSwap", "{0} falls back."), Name);
+
+	case EGF_BattleActionType::Pass:
+		// Locked in, incapacitated, or no legal order. Silence reads as a
+		// dropped turn, which is worse than an unexplained one.
+		return FText::Format(LOCTEXT("AnnouncePass", "{0} cannot move."), Name);
+
+	default:
+		return FText::GetEmpty();
+	}
+}
+
+TArray<FText> UGF_BattleResolver::BuildActionMessages(const FGF_ActionResolution& Plan)
+{
+	TArray<FText> Messages;
+
+	// The recharge line was the announcement. Every other failure is a result.
+	if (Plan.bRechargeTurn)
+	{
+		return Messages;
+	}
+
+	// Rolled when the turn began and carried on the plan, so this line and the
+	// battle ending come from the same roll.
+	if (Plan.ActionType == EGF_BattleActionType::Flee)
+	{
+		if (Plan.bFleeEscaped)
+		{
+			Messages.Add(LOCTEXT("ActionFleeEscaped", "Got away safely!"));
+		}
+		else
+		{
+			Messages.Add(Plan.FleeBlocker != nullptr
+				? FText::Format(LOCTEXT("ActionFleeBlocked", "{0} cuts off the escape!"),
+					QualifiedName(Plan.FleeBlocker, Plan.FleeBlockerDisplayName))
+				: LOCTEXT("ActionFleeFailed", "Couldn't get away!"));
+		}
+		return Messages;
+	}
+
+	if (Plan.bFailed)
+	{
+		if (!Plan.FailMessage.IsEmpty())
+		{
+			Messages.Add(Plan.FailMessage);
+		}
+		return Messages;
+	}
+
+	// Brace, Item, Swap and Pass have said all they have to say by now.
+	if (Plan.ActionType != EGF_BattleActionType::Skill)
+	{
+		return Messages;
+	}
+
+	const AGF_SkillDefinition* SkillCDO = Plan.SkillClass ? Plan.SkillClass.GetDefaultObject() : nullptr;
+	const FText ActorName = QualifiedName(Plan.ActorCreature, Plan.ActorDisplayName);
+
+	// With one target "It's super effective!" is unambiguous. With several it
+	// has to say whose, or the lines cannot be told apart.
+	const bool bNameTargets = Plan.Targets.Num() > 1;
+
+	//----------------------------------------------------------------------------
+	// Each target
+	//----------------------------------------------------------------------------
+
+	for (const FGF_TargetResolution& Target : Plan.Targets)
+	{
+		const FText TargetName = QualifiedName(Target.Creature, Target.DisplayName);
+
+		if (Target.bBlockedByProtect)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionProtected", "{0} protected itself!"), TargetName));
+			continue;
+		}
+
+		if (Target.bSemiInvulnerable)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionOutOfReach", "{0} is out of reach!"), TargetName));
+			continue;
+		}
+
+		if (Target.DamageToApply > 0.0f)
+		{
+			if (Target.HitCount > 1)
+			{
+				Messages.Add(FText::Format(LOCTEXT("ActionMultiHit", "Hit {0} times!"), FText::AsNumber(Target.HitCount)));
+			}
+
+			if (Target.Damage.bWasCritical)
+			{
+				Messages.Add(bNameTargets
+					? FText::Format(LOCTEXT("ActionCritNamed", "A critical hit on {0}!"), TargetName)
+					: LOCTEXT("ActionCrit", "A critical hit!"));
+			}
+
+			if (Target.Damage.bSuperEffective)
+			{
+				Messages.Add(bNameTargets
+					? FText::Format(LOCTEXT("ActionSuperNamed", "It's super effective on {0}!"), TargetName)
+					: LOCTEXT("ActionSuper", "It's super effective!"));
+			}
+			else if (Target.Damage.bNotEffective)
+			{
+				Messages.Add(bNameTargets
+					? FText::Format(LOCTEXT("ActionResistedNamed", "It's not very effective on {0}..."), TargetName)
+					: LOCTEXT("ActionResisted", "It's not very effective..."));
+			}
+
+			if (Target.bReducedByBrace)
+			{
+				Messages.Add(FText::Format(LOCTEXT("ActionBraced", "{0} braced against the blow."), TargetName));
+			}
+		}
+		else if (Target.Damage.bImmune)
+		{
+			// The formula's own line when it has one: a trait that blocked the
+			// skill names itself there, and that is worth more than a generic.
+			Messages.Add(!Target.Damage.DamageMessage.IsEmpty()
+				? FText::FromString(Target.Damage.DamageMessage)
+				: FText::Format(LOCTEXT("ActionImmune", "It doesn't affect {0}..."), TargetName));
+			continue;
+		}
+		else if (Target.Damage.bMissed)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionMissed", "{0} avoided the attack!"), TargetName));
+			continue;
+		}
+
+		// Nothing below was carried out on a creature that fell to the hit.
+		if (Target.bDowned)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionDowned", "{0} went down!"), TargetName));
+			continue;
+		}
+
+		if (!Target.bConnected)
+		{
+			continue;
+		}
+
+		if (Target.Status.bBlocked && !Target.Status.BlockMessage.IsEmpty())
+		{
+			Messages.Add(Target.Status.BlockMessage);
+		}
+		else if (!Target.Status.Message.IsEmpty())
+		{
+			Messages.Add(Target.Status.Message);
+		}
+
+		for (const FGF_StatStageOutcome& Stage : Target.StatStages)
+		{
+			if (!Stage.Message.IsEmpty())
+			{
+				Messages.Add(Stage.Message);
+			}
+		}
+
+		if (Target.bTrapped && SkillCDO != nullptr)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionTrapped", "{0} is caught in {1}!"),
+				TargetName, FText::FromName(SkillCDO->Name)));
+		}
+
+		if (Target.bFlinched && !Target.FlinchMessage.IsEmpty())
+		{
+			Messages.Add(Target.FlinchMessage);
+		}
+	}
+
+	//----------------------------------------------------------------------------
+	// The user
+	//----------------------------------------------------------------------------
+
+	if (SkillCDO != nullptr && SkillCDO->bIsProtectSkill)
+	{
+		Messages.Add(Plan.bProtectSucceeded
+			? FText::Format(LOCTEXT("ActionProtectUp", "{0} guards itself."), ActorName)
+			: LOCTEXT("ActionProtectFailed", "But it failed!"));
+	}
+
+	if (Plan.bSelfStatsCleansed)
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionCleansed", "{0}'s stat changes were wiped away."), ActorName));
+	}
+
+	for (const FGF_StatStageOutcome& Stage : Plan.SelfStatStages)
+	{
+		if (!Stage.Message.IsEmpty())
+		{
+			Messages.Add(Stage.Message);
+		}
+	}
+
+	if (Plan.bSelfStatusCleared)
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionRefreshed", "{0} shook off its condition."), ActorName));
+	}
+
+	if (Plan.bCritStageRaised)
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionFocused", "{0} is sharpening its focus."), ActorName));
+	}
+
+	Messages.Append(Plan.ContactMessages);
+
+	if (Plan.ContactStatusOnSelf.bApplied)
+	{
+		Messages.Add(FText::Format(LOCTEXT("StatusApplied", "{0} was afflicted: {1}!"),
+			ActorName, UEnum::GetDisplayValueAsText(Plan.ContactStatusOnSelf.Status)));
+	}
+
+	if (Plan.bDrainBackfired)
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionDrainBackfired", "The foul sap burns {0}!"), ActorName));
+	}
+	else if (Plan.SelfHeal > 0.0f)
+	{
+		Messages.Add(FText::Format(
+			SkillCDO != nullptr && SkillCDO->bIsDrainingSkill
+				? LOCTEXT("ActionDrained", "{0} drew strength from the hit.")
+				: LOCTEXT("ActionHealed", "{0} recovered health."),
+			ActorName));
+	}
+
+	if (SkillCDO != nullptr && SkillCDO->bHasRecoil && Plan.SelfDamage > 0.0f)
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionRecoil", "{0} is hurt by the recoil!"), ActorName));
+	}
+
+	// Recoil, a contact trait or a self-KO skill. Skipped when the user was also
+	// one of its own targets and has already been reported there.
+	if (Plan.bActorDowned && !Plan.Targets.ContainsByPredicate(
+			[&Plan](const FGF_TargetResolution& Target) { return Target.bDowned && Target.Creature == Plan.ActorCreature; }))
+	{
+		Messages.Add(FText::Format(LOCTEXT("ActionDowned", "{0} went down!"), ActorName));
+	}
+
+	return Messages;
+}
+
+TArray<FText> UGF_BattleResolver::BuildRoundEndMessages(const TArray<FGF_RoundEndTick>& Ticks)
+{
+	TArray<FText> Messages;
+
+	for (const FGF_RoundEndTick& Tick : Ticks)
+	{
+		Messages.Append(Tick.Messages);
+
+		// Not carried by the tick itself, and the one line the player most needs
+		// when chip damage is what finished a creature off.
+		if (Tick.bDowned)
+		{
+			Messages.Add(FText::Format(LOCTEXT("ActionDowned", "{0} went down!"),
+				QualifiedName(Tick.Creature, Tick.DisplayName)));
+		}
+	}
+
+	return Messages;
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -1101,11 +1101,22 @@ float UGF_BattleFlowComponent::GetFleeChance(EGF_BattleSide FleeingSide) const
 		return 0.0f;
 	}
 
-	FGF_BattleSlot Unused;
-	float Ours = 0.0f;
-	float Theirs = 0.0f;
-	FindFastestLivingSlot(FleeingSide, Unused, Ours);
-	FindFastestLivingSlot(UGF_BattleBoard::GetOpposingSide(FleeingSide), Unused, Theirs);
+	// Raw Speed on purpose: stat stages and paralysis do not help or hurt a Flee.
+	const auto FastestRawSpeed = [this](EGF_BattleSide Side)
+	{
+		float Fastest = 0.0f;
+		for (const FGF_BattleSlot& Slot : Board->GetLivingSlots(Side))
+		{
+			if (const AGF_Creature* Creature = Board->GetCreatureInSlot(Slot))
+			{
+				Fastest = FMath::Max(Fastest, Creature->CurrentStats.Speed);
+			}
+		}
+		return Fastest;
+	};
+
+	const float Ours = FastestRawSpeed(FleeingSide);
+	const float Theirs = FastestRawSpeed(UGF_BattleBoard::GetOpposingSide(FleeingSide));
 
 	// Nothing standing on the other side, or nothing there faster than us.
 	if (Theirs <= 0.0f || Ours >= Theirs)
@@ -1113,9 +1124,7 @@ float UGF_BattleFlowComponent::GetFleeChance(EGF_BattleSide FleeingSide) const
 		return 1.0f;
 	}
 
-	return FMath::Clamp(
-		FleeBaseOdds * (Ours / Theirs) + FleeOddsPerFailedAttempt * FailedFleeAttempts,
-		0.0f, 1.0f);
+	return FMath::Clamp(FleeBaseOdds + FleeOddsPerFailedAttempt * FailedFleeAttempts, 0.0f, 1.0f);
 }
 
 void UGF_BattleFlowComponent::RollFleeForCurrentTurn()

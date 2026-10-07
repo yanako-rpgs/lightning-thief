@@ -527,10 +527,9 @@ public:
 	 * The odds a Flee would escape with if it were rolled now, 0..1.
 	 *
 	 * Certain when the fleeing side's fastest creature is at least as fast as the
-	 * other side's. Otherwise FleeBaseOdds scaled by the speed ratio, plus
-	 * FleeOddsPerFailedAttempt for each Flee already failed this battle -- so a
-	 * slow party is never stuck for good, it just has to keep trying. With the
-	 * defaults, a party at half the speed escapes at 25%, 50%, 75%, then always.
+	 * other side's, on raw Speed. Otherwise FleeBaseOdds, plus
+	 * FleeOddsPerFailedAttempt for each Flee already failed this battle. With the
+	 * defaults a slower party escapes 75% of the time, every time.
 	 *
 	 * 0 when CanFlee is false.
 	 */
@@ -546,13 +545,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GammaFramework | Battle | Flow")
 	int32 GetFailedFleeAttempts() const { return FailedFleeAttempts; }
 
-	/** Escape odds for a slower side before any failed attempts, scaled by the speed ratio. */
+	/** Escape odds for a slower side before any failed attempts. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle | Flee", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float FleeBaseOdds = 0.5f;
+	float FleeBaseOdds = 0.75f;
 
 	/** Added to the odds for every Flee that has already failed this battle. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework | Battle | Flee", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float FleeOddsPerFailedAttempt = 0.25f;
+	float FleeOddsPerFailedAttempt = 0.0f;
 
 protected:
 	virtual void BeginPlay() override;
