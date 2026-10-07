@@ -94,11 +94,11 @@ FGF_CreatureCurrentStats UGF_CreatureStatLibrary::CalculateCreatureStats(const F
 
 int32 UGF_CreatureStatLibrary::CalculateHP(int32 BaseHP, int32 AP, int32 EP, int32 Level)
 {
-    // HP Formula: floor(((2 × Base + AP + EP) × Level) / 100) + Level + 10
+    // HP Formula: floor(((2 × Base + AP + floor(EP / 4)) × Level) / 100) + Level + 10
 
     // Clamp inputs to valid ranges
     AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
-    EP = FMath::Max(EP, 0);
+    EP = FGF_CreatureInstanceData::GetEPStatBonus(EP);
     Level = FMath::Clamp(Level, 1, 100);
 
     float BasePart = (2.0f * BaseHP + AP + EP) * Level;
@@ -119,11 +119,11 @@ int32 UGF_CreatureStatLibrary::CalculateStat(
     bool bIsPoise,
     bool bIsSpeed)
 {
-    // Stat Formula: floor((floor(((2 × Base + AP + EP) × Level) / 100) + 5) × Temperament)
+    // Stat Formula: floor((floor(((2 × Base + AP + floor(EP / 4)) × Level) / 100) + 5) × Temperament)
 
     // Clamp inputs to valid ranges
     AP = FMath::Clamp(AP, 0, FGF_CreatureInstanceData::MaxAP);
-    EP = FMath::Max(EP, 0);
+    EP = FGF_CreatureInstanceData::GetEPStatBonus(EP);
     Level = FMath::Clamp(Level, 1, 100);
 
     // Calculate base stat before nature

@@ -42,7 +42,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Breeding|Unique")
 	static int32 GetForeignPairUniqueRolls(const FGF_CreatureInstanceData& A, const FGF_CreatureInstanceData& B);
 
-	/** Rolls this egg would get right now, Unique Charm included. 1 roll = 1/3500. */
+	/** Rolls this egg would get right now, Unique Charm included. 1 roll = 1/777. */
 	UFUNCTION(BlueprintPure, Category = "Breeding|Unique", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEggUniqueRolls(const UObject* WorldContextObject, const FGF_CreatureInstanceData& Egg);
 

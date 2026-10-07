@@ -18,13 +18,13 @@ namespace
 {
 	// Unique odds work as N independent rolls: more rolls, more chances, which is how
 	// classic implementations stack the ForeignPair method and the Unique Charm.
-	//   1 roll  = 1/3500   (plain)
-	//   3 rolls = ~1/1167  (Unique Charm)
-	//   6 rolls = ~1/584   (ForeignPair)
-	//   8 rolls = ~1/438   (ForeignPair + Charm)
-	// 3500 matches the wild encounter rate in CreateWildCreature rather than the
-	// series-standard 4096, so eggs and wild Creature use one number.
-	constexpr int32 UniqueOddsDenominator = 3500;
+	//   1 roll  = 1/777   (plain)
+	//   3 rolls = ~1/259  (Unique Charm)
+	//   6 rolls = ~1/130  (ForeignPair)
+	//   8 rolls = ~1/98   (ForeignPair + Charm)
+	// 777 is the Dokimon shiny rate and matches the wild encounter rate in
+	// CreateWildCreature, so eggs and wild Creature use one number.
+	constexpr int32 UniqueOddsDenominator = 777;
 	constexpr int32 ForeignPairBonusRolls = 5;
 	constexpr int32 UniqueCharmBonusRolls = 2;
 }

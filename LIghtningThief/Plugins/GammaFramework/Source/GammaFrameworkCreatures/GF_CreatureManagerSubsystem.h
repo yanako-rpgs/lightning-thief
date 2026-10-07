@@ -535,7 +535,7 @@ void ReleaseCreature(int32 PartyIndex, int32 VaultPageIndex, int32 VaultSlot);
 	bool GiveCreatureAtLevelTracked(UGF_CreatureSpeciesData* SpeciesData, int32 Level, int32& OutVaultPageIndex);
 
 	/**
-	 * Give a Creature whose unique state is decided by the CALLER, not by the normal 1/4096 roll.
+	 * Give a Creature whose unique state is decided by the CALLER, not by the normal 1/777 roll.
 	 * Use this for scripted gifts that show the Creature before handing it over (starter pick,
 	 * gift events) — otherwise Initialize() re-rolls and the sprite the player saw won't match
 	 * what they receive, in either direction.

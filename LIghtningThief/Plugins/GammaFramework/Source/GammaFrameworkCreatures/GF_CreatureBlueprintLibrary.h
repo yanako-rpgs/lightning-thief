@@ -28,7 +28,7 @@ public:
 	 * @return Fully initialized wild Creature
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Creature")
-	static FGF_CreatureInstanceData CreateWildCreature(UGF_CreatureSpeciesData* SpeciesData, int32 Level, bool ForceUnique = false, int32 UniqueOdds = 3500, int32 EliteUniqueOdds = 7000);
+	static FGF_CreatureInstanceData CreateWildCreature(UGF_CreatureSpeciesData* SpeciesData, int32 Level, bool ForceUnique = false, int32 UniqueOdds = 777, int32 EliteUniqueOdds = 7000);
 
 	/**
 	 * Create a Creature with custom starting moves

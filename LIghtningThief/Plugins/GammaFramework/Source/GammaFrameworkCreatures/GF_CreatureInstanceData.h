@@ -189,9 +189,9 @@ struct GAMMAFRAMEWORKCREATURES_API FGF_CreatureInstanceData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
 	float MaxHP = 100;
 
-	// APs -- the Dokimon take on individual values. Rolled 0-MaxAP at birth, then
-	// raised toward MaxAP as Affinity grows (AddAffinity); every AP is MaxAP once
-	// Affinity is maxed.
+	// APs -- Dokimon's BORN values, 0-MaxAP a stat. Rolled by origin (RollAPs),
+	// then raised a couple of points at a time as the creature wins fights
+	// (AddAffinity). Affinity is simply how full they are.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
 	int32 HP_AP = 0;
 
@@ -210,9 +210,10 @@ struct GAMMAFRAMEWORKCREATURES_API FGF_CreatureInstanceData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
 	int32 Speed_AP = 0;
 
-	// EPs -- earned points. The creature earns EPPerLevel per level and the
-	// player spreads them freely, taking them back out at any time (showdown
-	// teambuilder style). The six together never exceed GetEPBudget().
+	// EPs -- earned points, stored as points (one point is 5 EP on the stat
+	// screen). The creature earns EPPerLevel per level and the player spreads
+	// them freely, taking them back out at any time. The six together never
+	// exceed GetEPBudget(), and one stat never holds more than MaxEPPerStat.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame)
 	int32 HP_EP = 0;
 
@@ -390,9 +391,9 @@ struct GAMMAFRAMEWORKCREATURES_API FGF_CreatureInstanceData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, Category = "Egg")
 	int32 EggUniqueRolls = 1;
 
-	// Affinity, 0-MaxAffinity. Starts at 0 for every creature and rises
-	// passively as it battles. Write it through AddAffinity, never directly:
-	// that is what carries the APs up with it.
+	// Affinity, 0-MaxAffinity: round(total AP / 300 * 100). Derived from the
+	// APs, never written on its own -- AddAffinity and RefreshAffinity keep it
+	// in step. Stored so evolution checks and the UI can read it directly.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, SaveGame, meta = (ClampMin = "0", ClampMax = "100"))
 	int32 Affinity = 0;
 
@@ -633,16 +634,40 @@ bool CanLearnMoreSkills() const { return Skills.Num() < GetSkillSlotCount(); }
 	static constexpr int32 MaxAffinity = 100;
 	static constexpr int32 EPPerLevel = 1;
 
+	/** Most points one stat can hold. A point is 5 EP, so 40 points is the 200 EP ceiling. */
+	static constexpr int32 MaxEPPerStat = 40;
+
+	/** What a stat's EP points add inside the stat formula: 5 EP a point, and the formula takes floor(EP / 4). */
+	static constexpr int32 GetEPStatBonus(int32 Points)
+	{
+		return (Points < 0 ? 0 : (Points > MaxEPPerStat ? MaxEPPerStat : Points)) * 5 / 4;
+	}
+
+	/** Where a creature came from, which decides how its APs are rolled. */
+	enum class EAPRoll : uint8
+	{
+		Wild,   // 2-22 in each stat
+		Owned,  // 20-50 points in total, spread at random: caught, gifted, hatched
+		Tamer   // 15-40 in each stat
+	};
+
+	/** Re-roll every AP for a creature of this origin. Changes stats: recalculate after. */
+	void RollAPs(EAPRoll Roll);
+
 	/**
-	 * Adjust affinity, clamped to 0-MaxAffinity. A gain also raises every AP
-	 * toward MaxAP by the same share of the remaining distance, so APs land on
-	 * MaxAP exactly when affinity does. Losing affinity never lowers an AP.
+	 * Add AP points to one random stat that is not yet at MaxAP (or, for a
+	 * negative Delta, take them from one random stat that is above 0). Affinity
+	 * is the AP total as a percentage of the most it can be, so it moves with it.
 	 *
 	 * Changes stats: call UGF_CreatureManagerSubsystem::RecalculateStats after.
 	 */
 	void AddAffinity(int32 Delta);
 
-	bool IsMaxAffinity() const { return Affinity >= MaxAffinity; }
+	/** Bring Affinity back in line with the APs after writing them directly. */
+	void RefreshAffinity();
+
+	int32 GetTotalAP() const { return HP_AP + Attack_AP + Defense_AP + Magic_AP + Poise_AP + Speed_AP; }
+	bool IsMaxAffinity() const { return GetTotalAP() >= MaxAP * 6; }
 
 	int32 GetAP(EGF_CreatureStat Stat) const;
 	int32 GetEP(EGF_CreatureStat Stat) const;

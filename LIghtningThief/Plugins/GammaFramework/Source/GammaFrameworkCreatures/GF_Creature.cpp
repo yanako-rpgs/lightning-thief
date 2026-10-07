@@ -347,25 +347,25 @@ void AGF_Creature::Heal(float HealAmount)
 //Start the AP roll
 void AGF_Creature::CreateAPs()
 {
-	constexpr int32 MaxAP = FGF_CreatureInstanceData::MaxAP;
+	// A creature with no instance data behind it is a wild one: 2-22 a stat.
+	APs.HP_AP = FMath::RandRange(2, 22);
 
-	APs.HP_AP = FMath::RandRange(0, MaxAP);
+	APs.Attack_AP = FMath::RandRange(2, 22);
 
-	APs.Attack_AP = FMath::RandRange(0, MaxAP);
+	APs.Defense_AP = FMath::RandRange(2, 22);
 
-	APs.Defense_AP = FMath::RandRange(0, MaxAP);
+	APs.Magic_AP = FMath::RandRange(2, 22);
 
-	APs.Magic_AP = FMath::RandRange(0, MaxAP);
+	APs.Poise_AP = FMath::RandRange(2, 22);
 
-	APs.Poise_AP = FMath::RandRange(0, MaxAP);
-
-	APs.Speed_AP = FMath::RandRange(0, MaxAP);
+	APs.Speed_AP = FMath::RandRange(2, 22);
 
 }
 
 //Calculate the Base Stats for the Creature from the APs and EPs
 float AGF_Creature::CalculateBaseStats(float BaseStat, int32 AP, int32 EP, int32 Level, float temperamentMod)
 {
+	EP = FGF_CreatureInstanceData::GetEPStatBonus(EP);
 	int rawVal = static_cast<int>(std::floor(((2 * BaseStat + AP + EP) * Level) / 100.0));
 
 	int withModBonus = rawVal + 5;
@@ -379,6 +379,7 @@ float AGF_Creature::CalculateBaseStats(float BaseStat, int32 AP, int32 EP, int32
 float AGF_Creature::CalculateBaseHP(float BaseStat, int32 AP, int32 EP, int32 Level)
 {
 
+	EP = FGF_CreatureInstanceData::GetEPStatBonus(EP);
 	int hp = static_cast<int>(std::floor(((2 * BaseStat + AP + EP) * Level) / 100.0));
 
 

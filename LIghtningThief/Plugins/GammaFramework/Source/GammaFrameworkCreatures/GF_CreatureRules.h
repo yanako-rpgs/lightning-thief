@@ -13,8 +13,25 @@ class GAMMAFRAMEWORKCREATURES_API UGF_CreatureRulesSettings : public UDeveloperS
 public:
 	virtual FName GetCategoryName() const override { return FName(TEXT("Game")); }
 
-	UPROPERTY(Config, EditAnywhere, Category = "Affinity", meta = (ClampMin = "0", ClampMax = "100"))
-	int32 AffinityPerFoeDefeated = 1;
+	/** AP points each creature that fought a wild foe gains when it goes down. */
+	UPROPERTY(Config, EditAnywhere, Category = "Affinity", meta = (ClampMin = "0", ClampMax = "50"))
+	int32 APPerWildFoeDefeated = 2;
+
+	/** AP points each creature that fought a tamer's creature gains when it goes down. */
+	UPROPERTY(Config, EditAnywhere, Category = "Affinity", meta = (ClampMin = "0", ClampMax = "50"))
+	int32 APPerTamerFoeDefeated = 4;
+
+	/** EXP a downed foe is worth per level it had, before the tamer bonus and the random swing. */
+	UPROPERTY(Config, EditAnywhere, Category = "EXP", meta = (ClampMin = "0.0"))
+	float EXPPerFoeLevel = 43.2f;
+
+	/** Every species needs Level^3 EXP to finish a level. The species' Exp Curve is ignored while this is on. */
+	UPROPERTY(Config, EditAnywhere, Category = "EXP")
+	bool bEveryLevelCostsLevelCubed = true;
+
+	/** A fresh creature is Unique (shiny) one time in this many. */
+	UPROPERTY(Config, EditAnywhere, Category = "Unique", meta = (ClampMin = "1"))
+	int32 UniqueOdds = 777;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Skill Slots", meta = (ClampMin = "1", ClampMax = "4"))
 	int32 StartingSkillSlots = 2;
@@ -29,16 +46,20 @@ public:
 	float DualElementSTAB = 1.5f;
 
 	UPROPERTY(Config, EditAnywhere, Category = "STAB", meta = (ClampMin = "1.0"))
-	float SingleElementSTAB = 1.75f;
+	float SingleElementSTAB = 2.0f;
 
 	UPROPERTY(Config, EditAnywhere, Category = "STAB", meta = (ClampMin = "0.0"))
 	float AdaptabilitySTABBonus = 0.5f;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Critical Hits")
-	TArray<float> CritChancePercentByStage = { 10.0f, 35.0f, 50.0f, 75.0f, 100.0f };
+	TArray<float> CritChancePercentByStage = { 1100.0f / 101.0f, 3100.0f / 101.0f, 50.0f, 75.0f, 100.0f };
 
 	UPROPERTY(Config, EditAnywhere, Category = "Protect")
-	TArray<float> ProtectChancePercentByStreak = { 100.0f, 50.0f, 25.0f };
+	TArray<float> ProtectChancePercentByStreak = { 99.0f, 200.0f / 3.0f, 100.0f / 3.0f };
+
+	/** Chance a sleeping creature wakes at the start of each of its turns. */
+	UPROPERTY(Config, EditAnywhere, Category = "Status", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+	float SleepWakeChancePercent = 20.0f;
 
 	// --------------------------------------------------------
 	// HELPERS

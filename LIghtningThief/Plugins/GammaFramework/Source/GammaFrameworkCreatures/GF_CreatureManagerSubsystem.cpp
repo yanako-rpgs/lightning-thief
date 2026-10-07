@@ -1538,7 +1538,7 @@ bool UGF_CreatureManagerSubsystem::GiveCreatureTracked(UGF_CreatureSpeciesData* 
         VaultSystem->PlayerID              // <- Pass tamer ID
     );
 
-    // Initialize() always rolls unique at 1/4096. Scripted gifts that showed the Creature
+    // Initialize() always rolls unique at 1/777. Scripted gifts that showed the Creature
     // to the player first (starter pick, gift events) already decided this, so stomp the
     // roll with the caller's value. Authoritative both ways — a false here means the
     // player does NOT get a surprise unique the selection screen never displayed.
@@ -3474,15 +3474,20 @@ int32 UGF_CreatureManagerSubsystem::CalculateEXPYield(const FGF_CreatureInstance
 	UE_LOG(LogTemp, Warning, TEXT(" EXP CALCULATION FOR DEFEAT:"));
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("   Species: %s"), *Species->SpeciesName.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("BaseEXP: %.1f   <- CHECK THIS VALUE!"), Species->BaseEXP);
 	UE_LOG(LogTemp, Warning, TEXT("   Level: %d"), DefeatedCreature.Level);
 	UE_LOG(LogTemp, Warning, TEXT("   Tamer Battle: %s"), bIsTamerBattle ? TEXT("YES") : TEXT("NO"));
 
-	// Base EXP formula: (BaseEXP * Level) / 7
-	float BaseYield = (Species->BaseEXP * DefeatedCreature.Level) / 7.0f;
+	// Dokimon EXP: EXPPerFoeLevel * foe level * a random swing. The species plays
+	// no part, so its Base EXP is not read. 1 appears three times in the swing
+	// table on purpose -- it is the likeliest roll.
+	static const float Swings[] = { 0.85f, 0.9f, 1.0f, 1.0f, 1.0f, 1.1f, 1.15f, 1.2f, 1.25f };
+	const float Swing = Swings[FMath::RandRange(0, static_cast<int32>(UE_ARRAY_COUNT(Swings)) - 1)];
+	const float PerLevel = GetDefault<UGF_CreatureRulesSettings>()->EXPPerFoeLevel;
 
-	UE_LOG(LogTemp, Warning, TEXT("   Calculation: (%.1f * %d) / 7 = %.1f"),
-		Species->BaseEXP, DefeatedCreature.Level, BaseYield);
+	float BaseYield = PerLevel * DefeatedCreature.Level * Swing;
+
+	UE_LOG(LogTemp, Warning, TEXT("   Calculation: %.1f * %d * %.2f = %.1f"),
+		PerLevel, DefeatedCreature.Level, Swing, BaseYield);
 
 	// Tamer battles give 1.5x EXP
 	if (bIsTamerBattle)
@@ -3906,8 +3911,11 @@ int32 UGF_CreatureManagerSubsystem::AwardEXPFromBattle(const FGF_CreatureInstanc
 	OutLevelUps.Empty();
 	OutEXPGains.Empty();
 
+	// A wild creature has no tamer on record; anything else belonged to someone.
+	const bool bTamerOwned = DefeatedCreature.CurrentTamerID != 0 && !DefeatedCreature.CurrentTamerName.IsNone();
+
 	// Calculate base EXP yield
-	int32 BaseEXP = CalculateEXPYield(DefeatedCreature, false);
+	int32 BaseEXP = CalculateEXPYield(DefeatedCreature, bTamerOwned);
 
 	// Scaled before the share-out, and before the <= 0 test: a multiplier can only
 	// raise the yield, so a Creature worth nothing stays worth nothing.
@@ -3930,7 +3938,18 @@ int32 UGF_CreatureManagerSubsystem::AwardEXPFromBattle(const FGF_CreatureInstanc
 		*DefeatedCreature.GetDisplayName().ToString(), BaseEXP);
 
 	int32 PartySize = VaultSystem->GetPartySize();
-	int32 BattlerCount = BattlerIndices.Num();
+
+	// The yield is split between the battlers that can still use it: standing,
+	// and below level 100.
+	int32 BattlerCount = 0;
+	for (const int32 BattlerIndex : BattlerIndices)
+	{
+		FGF_CreatureInstanceData Battler;
+		if (VaultSystem->GetPartyCreature(BattlerIndex, Battler) && !Battler.bIsDowned && Battler.Level < 100)
+		{
+			++BattlerCount;
+		}
+	}
 
 	// Player options drive EXP Share and the difficulty EXP curve. Resolved once
 	// so a settings change mid-battle cannot split one award across two rulesets.
@@ -3948,7 +3967,8 @@ int32 UGF_CreatureManagerSubsystem::AwardEXPFromBattle(const FGF_CreatureInstanc
 	// every battler still standing -- a level 100 or level-capped battler that earns
 	// no EXP below still earns affinity here. GiveEXP re-reads the party, so the
 	// raised APs feed straight into any level-up stat recalculation.
-	const int32 AffinityGain = GetDefault<UGF_CreatureRulesSettings>()->AffinityPerFoeDefeated;
+	const UGF_CreatureRulesSettings* Rules = GetDefault<UGF_CreatureRulesSettings>();
+	const int32 AffinityGain = bTamerOwned ? Rules->APPerTamerFoeDefeated : Rules->APPerWildFoeDefeated;
 	if (AffinityGain > 0)
 	{
 		for (const int32 BattlerIndex : BattlerIndices)
@@ -3964,7 +3984,7 @@ int32 UGF_CreatureManagerSubsystem::AwardEXPFromBattle(const FGF_CreatureInstanc
 			RecalculateStats(Battler);
 			VaultSystem->UpdatePartyCreature(BattlerIndex, Battler);
 
-			UE_LOG(LogTemp, Log, TEXT(" %s: affinity +%d (now %d)"),
+			UE_LOG(LogTemp, Log, TEXT(" %s: +%d AP (affinity now %d%%)"),
 				*Battler.GetDisplayName().ToString(), AffinityGain, Battler.Affinity);
 		}
 	}
@@ -4283,6 +4303,14 @@ int32 UGF_CreatureManagerSubsystem::CalculateTotalEXPForLevel(int32 Level, EGF_E
 	}
 
 
+
+	// Dokimon: one curve for every species. Level L costs L^3 to finish, so the
+	// running total needed to reach Level is 1^3 + ... + (Level-1)^3.
+	if (GetDefault<UGF_CreatureRulesSettings>()->bEveryLevelCostsLevelCubed)
+	{
+		const int64 Pairs = static_cast<int64>(Level - 1) * Level / 2;
+		return static_cast<int32>(FMath::Min<int64>(Pairs * Pairs, MAX_int32));
+	}
 
 	int32 n = Level;
 

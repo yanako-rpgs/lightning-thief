@@ -675,9 +675,14 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
                 }
                 else if (Key == TEXT("affinity"))
                 {
-                    // Through AddAffinity so the APs rise with it; an aps= given after this
-                    // still overrides them.
-                    Creature.AddAffinity(FCString::Atoi(*Value) - Creature.Affinity);
+                    // Affinity is how full the APs are, so raise them a point at a time
+                    // until it reads what was asked for; an aps= given after this still
+                    // overrides them.
+                    const int32 Target = FMath::Clamp(FCString::Atoi(*Value), 0, FGF_CreatureInstanceData::MaxAffinity);
+                    while (Creature.Affinity < Target && !Creature.IsMaxAffinity())
+                    {
+                        Creature.AddAffinity(1);
+                    }
                 }
                 else
                 {
@@ -687,6 +692,7 @@ static FAutoConsoleCommandWithWorldAndArgs GGiftMakeCommand(
 
             // APs, EPs, nature and level all feed the stat formula, so anything set
             // above has invalidated whatever CreateCreature computed.
+            Creature.RefreshAffinity();
             Manager->RecalculateStats(Creature);
             Creature.CurrentHP = Creature.MaxHP;
 

@@ -238,11 +238,12 @@ public:
 	// ============================================
 
 	/**
-	 * Flat HP the user recovers when it uses this skill. Not a percentage.
+	 * Heal power of this skill. Not HP and not a percentage: the user recovers
+	 * ceil((0.012 * Level * HealAmount + 2) * Rand(0.95-1.25) * STAB).
 	 * On a damaging skill (Dark Bond, Soul Drain) the heal needs the hit to
 	 * connect; on a Status skill (Healing Herbs) it always happens.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Flat HP the user heals. Damaging skills only heal if they connect.", Category = "Dokimon", ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Heal power, scaled by the user's level and STAB. Damaging skills only heal if they connect.", Category = "Dokimon", ClampMin = "0"))
 	int32 HealAmount = 0;
 
 	/** Only usable on the user's first turn after entering battle (Surprise Attack, Early Bird). Fails otherwise. */

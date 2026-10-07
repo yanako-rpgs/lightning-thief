@@ -8,9 +8,7 @@ namespace
 	//   x0.5 resisted
 	//   x0   immune
 	//
-	// Placeholder chart: the classic (Gen 6+) chart cut down to the Dokimon
-	// elements, until Lightning Thief has its own. Fight plays Fighting, and
-	// Light -- the element of the plain skills -- plays Normal.
+	// The Dokimon Quest chart, from the Doki 2 Formulas document.
 	struct FMatchup
 	{
 		EGF_Element Defending;
@@ -21,69 +19,71 @@ namespace
 	const TMap<EGF_Element, TArray<FMatchup>>& Chart()
 	{
 		static const TMap<EGF_Element, TArray<FMatchup>> Table = {
-			{ EGF_Element::Light, {
-				{ EGF_Element::Ghost, 0.0f },
-			}},
 			{ EGF_Element::Fire, {
 				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Ice, 2.0f },
-				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Water, 0.5f },
-				{ EGF_Element::Dragon, 0.5f },
+				{ EGF_Element::Water, 0.5f },  { EGF_Element::Fairy, 0.5f },
+			}},
+			{ EGF_Element::Grass, {
+				{ EGF_Element::Water, 2.0f },  { EGF_Element::Electric, 2.0f },
+				{ EGF_Element::Light, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Flying, 0.5f },
+				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Ice, 0.5f },
 			}},
 			{ EGF_Element::Water, {
-				{ EGF_Element::Fire, 2.0f },
-				{ EGF_Element::Water, 0.5f },  { EGF_Element::Grass, 0.5f },
-				{ EGF_Element::Dragon, 0.5f },
+				{ EGF_Element::Fire, 2.0f },   { EGF_Element::Poison, 2.0f },
+				{ EGF_Element::Grass, 0.5f },  { EGF_Element::Electric, 0.5f },
+				{ EGF_Element::Ice, 0.5f },
 			}},
 			{ EGF_Element::Electric, {
 				{ EGF_Element::Water, 2.0f },  { EGF_Element::Flying, 2.0f },
-				{ EGF_Element::Electric, 0.5f }, { EGF_Element::Grass, 0.5f },
+				{ EGF_Element::Grass, 0.5f },  { EGF_Element::Electric, 0.5f },
+				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Ice, 0.5f },
+			}},
+			{ EGF_Element::Dark, {
+				{ EGF_Element::Fire, 2.0f },   { EGF_Element::Electric, 2.0f },
+				{ EGF_Element::Light, 0.5f },  { EGF_Element::Fairy, 0.5f },
+			}},
+			{ EGF_Element::Light, {
+				{ EGF_Element::Dark, 2.0f },   { EGF_Element::Fairy, 2.0f },
+				{ EGF_Element::Grass, 0.5f },  { EGF_Element::Electric, 0.5f },
 				{ EGF_Element::Dragon, 0.5f },
 			}},
-			{ EGF_Element::Grass, {
-				{ EGF_Element::Water, 2.0f },
-				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Grass, 0.5f },
-				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Flying, 0.5f },
-				{ EGF_Element::Dragon, 0.5f },
-			}},
-			{ EGF_Element::Ice, {
-				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Flying, 2.0f },
-				{ EGF_Element::Dragon, 2.0f },
-				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Water, 0.5f },
+			{ EGF_Element::Flying, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Fight, 2.0f },
+				{ EGF_Element::Electric, 0.5f }, { EGF_Element::Dark, 0.5f },
 				{ EGF_Element::Ice, 0.5f },
 			}},
 			{ EGF_Element::Fight, {
-				{ EGF_Element::Light, 2.0f },   { EGF_Element::Ice, 2.0f },
-				{ EGF_Element::Dark, 2.0f },
-				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Flying, 0.5f },
+				{ EGF_Element::Dark, 2.0f },   { EGF_Element::Light, 2.0f },
+				{ EGF_Element::Ice, 2.0f },
+				{ EGF_Element::Flying, 0.5f }, { EGF_Element::Poison, 0.5f },
 				{ EGF_Element::Fairy, 0.5f },
 				{ EGF_Element::Ghost, 0.0f },
 			}},
 			{ EGF_Element::Poison, {
 				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Fairy, 2.0f },
-				{ EGF_Element::Poison, 0.5f }, { EGF_Element::Ghost, 0.5f },
-			}},
-			{ EGF_Element::Flying, {
-				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Fight, 2.0f },
-				{ EGF_Element::Electric, 0.5f },
-			}},
-			{ EGF_Element::Ghost, {
-				{ EGF_Element::Ghost, 2.0f },
-				{ EGF_Element::Dark, 0.5f },
-				{ EGF_Element::Light, 0.0f },
+				{ EGF_Element::Poison, 0.5f },
+				{ EGF_Element::Ice, 0.0f },
 			}},
 			{ EGF_Element::Dragon, {
 				{ EGF_Element::Dragon, 2.0f },
-				{ EGF_Element::Fairy, 0.0f },
-			}},
-			{ EGF_Element::Dark, {
-				{ EGF_Element::Ghost, 2.0f },
-				{ EGF_Element::Fight, 0.5f },  { EGF_Element::Dark, 0.5f },
-				{ EGF_Element::Fairy, 0.5f },
+				{ EGF_Element::Fairy, 0.5f },  { EGF_Element::Ice, 0.5f },
 			}},
 			{ EGF_Element::Fairy, {
-				{ EGF_Element::Fight, 2.0f },  { EGF_Element::Dragon, 2.0f },
-				{ EGF_Element::Dark, 2.0f },
-				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Poison, 0.5f },
+				{ EGF_Element::Fire, 2.0f },   { EGF_Element::Poison, 2.0f },
+				{ EGF_Element::Dragon, 2.0f },
+				{ EGF_Element::Light, 0.5f },  { EGF_Element::Fairy, 0.5f },
+			}},
+			{ EGF_Element::Ghost, {
+				{ EGF_Element::Fairy, 2.0f },  { EGF_Element::Ghost, 2.0f },
+				{ EGF_Element::Fight, 0.0f },
+			}},
+			{ EGF_Element::Ice, {
+				{ EGF_Element::Grass, 2.0f },  { EGF_Element::Flying, 2.0f },
+				{ EGF_Element::Dragon, 2.0f },
+				{ EGF_Element::Fire, 0.5f },   { EGF_Element::Water, 0.5f },
+				{ EGF_Element::Electric, 0.5f }, { EGF_Element::Ghost, 0.5f },
+				{ EGF_Element::Ice, 0.5f },
 			}},
 		};
 		return Table;

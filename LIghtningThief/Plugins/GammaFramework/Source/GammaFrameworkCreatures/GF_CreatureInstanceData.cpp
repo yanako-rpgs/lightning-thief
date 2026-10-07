@@ -40,14 +40,10 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 		UE_LOG(LogTemp, Warning, TEXT("Creature initialized without tamer info - will be set later"));
 	}
 
-	// Roll APs
-	HP_AP = FMath::RandRange(0, MaxAP);
-	Attack_AP = FMath::RandRange(0, MaxAP);
-	Defense_AP = FMath::RandRange(0, MaxAP);
-	Magic_AP = FMath::RandRange(0, MaxAP);
-	Poise_AP = FMath::RandRange(0, MaxAP);
-	Speed_AP = FMath::RandRange(0, MaxAP);
-	Affinity = 0;
+	// Roll APs. Nobody's creature is a wild one; a tamer's team is re-rolled as
+	// Tamer by AGF_TamerMaster once this returns.
+	const bool bHasTamer = !TamerName.IsNone() && TamerID != 0;
+	RollAPs(bHasTamer ? EAPRoll::Owned : EAPRoll::Wild);
 
 	// EPs start unspent
 	HP_EP = 0;
@@ -73,8 +69,8 @@ void FGF_CreatureInstanceData::Initialize(UGF_CreatureSpeciesData* InSpeciesData
 		Gender = (Roll <= InSpeciesData->MaleRatio) ? EGF_CreatureGender::Male : EGF_CreatureGender::Female;
 	}
 
-	// Unique chance (1/4096)
-	bIsUnique = FMath::RandRange(1, 4096) == 1;
+	// Unique chance (1 in 777 by default)
+	bIsUnique = FMath::RandRange(1, FMath::Max(1, GetDefault<UGF_CreatureRulesSettings>()->UniqueOdds)) == 1;
 
 	// Trait — 50/50 between the species' two slots, or slot 0 when it only has one.
 	// Baked in here so editing the species asset later can't retroactively change
@@ -295,27 +291,58 @@ int32 FGF_CreatureInstanceData::GetEP(EGF_CreatureStat Stat) const
 	return Field ? *Field : 0;
 }
 
-void FGF_CreatureInstanceData::AddAffinity(int32 Delta)
+void FGF_CreatureInstanceData::RollAPs(EAPRoll Roll)
 {
-	const int32 Before = Affinity;
-	Affinity = FMath::Clamp(Affinity + Delta, 0, MaxAffinity);
-
-	const int32 Gained = Affinity - Before;
-	if (Gained <= 0)
-	{
-		return;
-	}
-
-	// Close the same fraction of every AP's gap to MaxAP as this gain closes of
-	// affinity's gap to MaxAffinity. Rounding to nearest keeps each AP within one
-	// point of a straight line from its birth roll to MaxAP, and the last gain
-	// (Gained == Remaining) always lands exactly on MaxAP.
-	const float Share = static_cast<float>(Gained) / static_cast<float>(MaxAffinity - Before);
 	for (const EGF_CreatureStat Stat : AllStats)
 	{
 		int32& AP = *StatField(*this, Stat, true);
-		AP = FMath::Clamp(AP + FMath::RoundToInt((MaxAP - AP) * Share), 0, MaxAP);
+		switch (Roll)
+		{
+			case EAPRoll::Wild:  AP = FMath::RandRange(2, 22);  break;
+			case EAPRoll::Tamer: AP = FMath::RandRange(15, 40); break;
+			default:             AP = 0;                        break;
+		}
 	}
+
+	if (Roll == EAPRoll::Owned)
+	{
+		// One point at a time to a random stat, so the spread is uneven the way
+		// a hand-dealt one would be. 50 points can never fill a stat past MaxAP.
+		for (int32 Points = FMath::RandRange(20, 50); Points > 0; --Points)
+		{
+			++*StatField(*this, AllStats[FMath::RandRange(0, 5)], true);
+		}
+	}
+
+	RefreshAffinity();
+}
+
+void FGF_CreatureInstanceData::AddAffinity(int32 Delta)
+{
+	// Only the stats that can still move in this direction are candidates.
+	TArray<int32*, TInlineAllocator<6>> Open;
+	for (const EGF_CreatureStat Stat : AllStats)
+	{
+		int32* AP = StatField(*this, Stat, true);
+		if ((Delta > 0 && *AP < MaxAP) || (Delta < 0 && *AP > 0))
+		{
+			Open.Add(AP);
+		}
+	}
+
+	if (Open.Num() > 0)
+	{
+		int32& AP = *Open[FMath::RandRange(0, Open.Num() - 1)];
+		AP = FMath::Clamp(AP + Delta, 0, MaxAP);
+	}
+
+	RefreshAffinity();
+}
+
+void FGF_CreatureInstanceData::RefreshAffinity()
+{
+	Affinity = FMath::Clamp(
+		FMath::RoundToInt(GetTotalAP() * static_cast<float>(MaxAffinity) / (MaxAP * 6)), 0, MaxAffinity);
 }
 
 int32 FGF_CreatureInstanceData::AllocateEP(EGF_CreatureStat Stat, int32 Delta)
@@ -327,7 +354,7 @@ int32 FGF_CreatureInstanceData::AllocateEP(EGF_CreatureStat Stat, int32 Delta)
 	}
 
 	const int32 Moved = (Delta > 0)
-		? FMath::Min(Delta, GetUnspentEP())
+		? FMath::Min3(Delta, GetUnspentEP(), FMath::Max(0, MaxEPPerStat - *Field))
 		: -FMath::Min(-Delta, *Field);
 
 	*Field += Moved;
@@ -341,16 +368,16 @@ void FGF_CreatureInstanceData::ResetEPs()
 
 void FGF_CreatureInstanceData::NormalizeGrowth()
 {
-	Affinity = FMath::Clamp(Affinity, 0, MaxAffinity);
-
 	for (const EGF_CreatureStat Stat : AllStats)
 	{
 		int32& AP = *StatField(*this, Stat, true);
 		AP = FMath::Clamp(AP, 0, MaxAP);
 
 		int32& EP = *StatField(*this, Stat, false);
-		EP = FMath::Max(0, EP);
+		EP = FMath::Clamp(EP, 0, MaxEPPerStat);
 	}
+
+	RefreshAffinity();
 
 	int32 Excess = GetTotalEP() - GetEPBudget();
 	for (int32 i = UE_ARRAY_COUNT(AllStats) - 1; i >= 0 && Excess > 0; --i)

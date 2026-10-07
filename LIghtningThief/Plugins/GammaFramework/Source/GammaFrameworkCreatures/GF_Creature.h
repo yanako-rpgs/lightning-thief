@@ -872,13 +872,14 @@ void SetSkillSlot(int32 SlotIndex, TSubclassOf<AGF_SkillDefinition> SkillClass);
  * @param NewStatus         The status to apply. None is a no-op.
  * @param bOverrideExisting Replace a status this Creature already has (Rest, debug).
  * @param MinSleepTurns     Sleep counter lower bound, used only for Sleeping.
- * @param MaxSleepTurns     Sleep counter upper bound. Match these to whatever your
- *                          existing sleep moves (Spore) roll — 1-3 is a placeholder.
+ * @param MaxSleepTurns     Sleep counter upper bound. The counter is the most turns
+ *                          sleep can cost; each turn also has a flat chance to wake
+ *                          early (Creature Rules > Sleep Wake Chance Percent).
  * @return True if the status was actually applied.
  */
 UFUNCTION(BlueprintCallable, Category = "Creature | Battle | Status")
 bool ApplyStatusCondition(EGF_STATUSEffect NewStatus, bool bOverrideExisting = false,
-	int32 MinSleepTurns = 1, int32 MaxSleepTurns = 3);
+	int32 MinSleepTurns = 4, int32 MaxSleepTurns = 4);
 
 /** Clear any non-volatile status and reset the sleep counter. */
 UFUNCTION(BlueprintCallable, Category = "Creature | Battle | Status")

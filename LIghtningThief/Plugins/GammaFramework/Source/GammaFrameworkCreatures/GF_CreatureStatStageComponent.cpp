@@ -341,18 +341,14 @@ const int32* UGF_CreatureStatStageComponent::GetStatStagePointerConst(EGF_StatSt
 
 float UGF_CreatureStatStageComponent::CalculateMultiplier(int32 Stage)
 {
-	if (Stage >= 0)
-	{
-		// Positive stages: (2 + Stage) / 2
-		// Stage 0 = 1.0x, +1 = 1.5x, +2 = 2.0x, +3 = 2.5x, +4 = 3.0x, +5 = 3.5x, +6 = 4.0x
-		return (2.0f + Stage) / 2.0f;
-	}
-	else
-	{
-		// Negative stages: 2 / (2 - Stage)
-		// Stage -1 = 0.67x, -2 = 0.5x, -3 = 0.4x, -4 = 0.33x, -5 = 0.29x, -6 = 0.25x
-		return 2.0f / (2.0f - Stage);
-	}
+	// The Dokimon table, -6 to +6. Raises climb half a step each; drops are its
+	// own hand-tuned curve rather than the mirror of the raises.
+	static const float Table[] = {
+		0.25f, 0.30f, 0.35f, 0.40f, 0.50f, 0.70f,
+		1.0f,
+		1.5f, 2.0f, 2.5f, 3.0f, 3.5f, 4.0f };
+
+	return Table[FMath::Clamp(Stage, -6, 6) + 6];
 }
 
 bool UGF_CreatureStatStageComponent::IsAtLimitForChange(EGF_StatStages StatType, int32 Change) const
