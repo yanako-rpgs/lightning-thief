@@ -51,19 +51,19 @@ void UGF_BattleBoard::SetSideLineup(EGF_BattleSide Side, const TArray<AGF_Creatu
 			// that must not overlap its neighbour, a ring, a camera -- knows its
 			// seat the moment it has one, rather than having to ask the board at
 			// a time when the board may not be built yet.
-			if (Active[i]) { Active[i]->BattleSeatIndex = i; }
+			if (Active[i]) { Active[i]->SetBattleSeatIndex(i); }
 		}
 		else
 		{
 			Bench.Add(Active[i]);
-			if (Active[i]) { Active[i]->BattleSeatIndex = INDEX_NONE; }
+			if (Active[i]) { Active[i]->SetBattleSeatIndex(INDEX_NONE); }
 		}
 	}
 
 	for (AGF_Creature* Reserve : Reserves)
 	{
 		Bench.Add(Reserve);
-		if (Reserve) { Reserve->BattleSeatIndex = INDEX_NONE; }
+		if (Reserve) { Reserve->SetBattleSeatIndex(INDEX_NONE); }
 	}
 }
 
@@ -81,9 +81,9 @@ void UGF_BattleBoard::SetCreatureInSlot(const FGF_BattleSlot& Slot, AGF_Creature
 	// does. Swaps and replacements come through here, so both stay true.
 	if (Line.IsValidIndex(Slot.Index) && Line[Slot.Index])
 	{
-		Line[Slot.Index]->BattleSeatIndex = INDEX_NONE;
+		Line[Slot.Index]->SetBattleSeatIndex(INDEX_NONE);
 	}
-	if (Creature) { Creature->BattleSeatIndex = Slot.Index; }
+	if (Creature) { Creature->SetBattleSeatIndex(Slot.Index); }
 	if (Line.IsValidIndex(Slot.Index))
 	{
 		Line[Slot.Index] = Creature;
@@ -255,6 +255,8 @@ bool UGF_BattleBoard::SwapInReserve(const FGF_BattleSlot& Slot, int32 ReserveInd
 	TObjectPtr<AGF_Creature> Outgoing = Line[Slot.Index];
 
 	Line[Slot.Index] = Incoming;
+	Incoming->SetBattleSeatIndex(Slot.Index);
+	if (Outgoing) { Outgoing->SetBattleSeatIndex(INDEX_NONE); }
 
 	// Keep the bench position rather than appending, so a party ordering the
 	// player set up in the menu survives a round of swapping.
@@ -276,6 +278,7 @@ bool UGF_BattleBoard::SendOutToSlot(const FGF_BattleSlot& Slot, AGF_Creature* Cr
 	}
 
 	Line[Slot.Index] = Creature;
+	Creature->SetBattleSeatIndex(Slot.Index);
 	GetReserveLineMutable(Slot.Side).Remove(Creature);
 	return true;
 }

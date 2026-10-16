@@ -108,6 +108,9 @@ bool UGF_VaultSystem::GetPartyCreature(int32 Index, FGF_CreatureInstanceData& Ou
 {
 	if (!IsValidPartyIndex(Index))
 	{
+		// Blueprint reuses the same OutData storage across loop iterations, so clear it —
+		// otherwise an empty slot still reads as the last valid creature.
+		OutData = FGF_CreatureInstanceData();
 		return false;
 	}
 

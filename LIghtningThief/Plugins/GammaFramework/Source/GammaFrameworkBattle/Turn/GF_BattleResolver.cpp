@@ -233,6 +233,17 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 
 	Resolution.SkillIndexToSpend = Action.SkillIndex;
 
+	// Set by a faster creature's hit earlier this round and cleared when the
+	// next round starts. Only a skill is stopped -- swaps, items and Brace
+	// already returned above, matching the games, where a flinch costs the move.
+	if (Attacker->bIsFlinched)
+	{
+		Resolution.bFailed = true;
+		Resolution.bFlinchTurn = true;
+		Resolution.FailMessage = FText::FromString(Attacker->GetFlinchMessage());
+		return Resolution;
+	}
+
 	if (SkillCDO->bFirstTurnOnly && Attacker->bHasActedSinceEntering)
 	{
 		Resolution.bFailed = true;
@@ -354,11 +365,11 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 			// it looks like the heal simply did not fire.
 			TargetResult.bConnected = true;
 		}
-		else if (SkillCDO->Split == EGF_SkillCategory::Status)
+		else if (!GF_IsDamagingCategory(SkillCDO->Split))
 		{
-			// A status skill returns from the damage formula before the accuracy
-			// check ever runs -- it short-circuits on the Status split. So the
-			// roll has to happen here, or every status skill would land for free.
+			// A Utility or Healing skill returns from the damage formula before the accuracy
+			// check ever runs -- it short-circuits on the non-damaging split. So the
+			// roll has to happen here, or every such skill would land for free.
 			TargetResult.bConnected = DamageComponent->CheckSkillHit(Action.SkillClass, AttackerData, DefenderData);
 			TargetResult.Damage.bMissed = !TargetResult.bConnected;
 		}
@@ -520,10 +531,10 @@ FGF_ActionResolution UGF_BattleResolver::PlanAction(
 	Resolution.bCritStageRaised = SkillCDO->bRaisesCritStage;
 	Resolution.bSelfStatusCleared = SkillCDO->bIsRefresh && Attacker->Status != EGF_STATUS::None;
 
-	// Dokimon rules. A Status skill's effects on the user always land; a damaging
+	// Dokimon rules. A Utility or Healing skill's effects on the user always land; a damaging
 	// skill's only land when it connects, so a missed Mighty Mash raises nothing
 	// and a missed Dark Bond heals nothing.
-	const bool bSelfEffectsLand = SkillCDO->Split == EGF_SkillCategory::Status || bAnythingConnected;
+	const bool bSelfEffectsLand = !GF_IsDamagingCategory(SkillCDO->Split) || bAnythingConnected;
 
 	if (bSelfEffectsLand
 		&& SkillCDO->StatChanges.ContainsByPredicate(
@@ -1125,8 +1136,9 @@ FText UGF_BattleResolver::BuildAnnounceMessage(const FGF_ActionResolution& Plan)
 {
 	const FText Name = QualifiedName(Plan.ActorCreature, Plan.ActorDisplayName);
 
-	// The creature never got as far as choosing: the recharge line is the whole turn.
-	if (Plan.bRechargeTurn)
+	// The creature never got as far as choosing: the recharge or flinch line is
+	// the whole turn.
+	if (Plan.bRechargeTurn || Plan.bFlinchTurn)
 	{
 		return Plan.FailMessage;
 	}
@@ -1177,8 +1189,9 @@ TArray<FText> UGF_BattleResolver::BuildActionMessages(const FGF_ActionResolution
 {
 	TArray<FText> Messages;
 
-	// The recharge line was the announcement. Every other failure is a result.
-	if (Plan.bRechargeTurn)
+	// The recharge or flinch line was the announcement. Every other failure is
+	// a result.
+	if (Plan.bRechargeTurn || Plan.bFlinchTurn)
 	{
 		return Messages;
 	}
@@ -1325,10 +1338,9 @@ TArray<FText> UGF_BattleResolver::BuildActionMessages(const FGF_ActionResolution
 				TargetName, FText::FromName(SkillCDO->Name)));
 		}
 
-		if (Target.bFlinched && !Target.FlinchMessage.IsEmpty())
-		{
-			Messages.Add(Target.FlinchMessage);
-		}
+		// No line for bFlinched here. "flinched and couldn't move!" belongs to
+		// the flinched creature's own turn, where PlanAction fails it with that
+		// message -- printing it on the hit as well said it before it was true.
 	}
 
 	//----------------------------------------------------------------------------

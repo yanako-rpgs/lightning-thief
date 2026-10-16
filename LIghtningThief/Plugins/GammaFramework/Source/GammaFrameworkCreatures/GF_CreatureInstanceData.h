@@ -102,7 +102,7 @@ struct FGF_SkillDisplayInfo
     UPROPERTY(BlueprintReadOnly)
     EGF_Element Type = EGF_Element::None;
 
-    // Physical / Special (status moves included via the enum).
+    // Physical / Magic / Utility / Healing.
     UPROPERTY(BlueprintReadOnly)
     EGF_SkillCategory Category = EGF_SkillCategory::Physical;
 

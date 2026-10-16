@@ -606,6 +606,17 @@ void AGF_Creature::InitializeFromInstanceData(const FGF_CreatureInstanceData& In
 	OnCreatureInitialized();
 }
 
+void AGF_Creature::SetBattleSeatIndex(int32 NewSeatIndex)
+{
+	const int32 OldSeatIndex = BattleSeatIndex;
+	BattleSeatIndex = NewSeatIndex;
+
+	if (OldSeatIndex == NewSeatIndex) { return; }
+
+	if (OldSeatIndex != INDEX_NONE) { OnLeftField(); }
+	if (NewSeatIndex != INDEX_NONE) { OnEnteredField(NewSeatIndex); }
+}
+
 
 
 FGF_CreatureInstanceData AGF_Creature::ExportToInstanceData() const

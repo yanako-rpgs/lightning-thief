@@ -299,6 +299,14 @@ struct GAMMAFRAMEWORKBATTLE_API FGF_ActionResolution
 	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
 	bool bRechargeTurn = false;
 
+	/**
+	 * A faster creature's hit made this one flinch, so its move never happens.
+	 * Like bRechargeTurn, also bFailed with the "flinched and couldn't move!"
+	 * line as FailMessage, and that line is the announcement rather than a result.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
+	bool bFlinchTurn = false;
+
 	/** The skill connected and the user must recharge on its next turn. */
 	UPROPERTY(BlueprintReadOnly, Category = "GammaFramework | Battle")
 	bool bWillRecharge = false;

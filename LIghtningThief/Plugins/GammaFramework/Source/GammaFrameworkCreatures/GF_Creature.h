@@ -269,6 +269,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "Creature | Battle")
 	int32 BattleSeatIndex = INDEX_NONE;
 
+	/**
+	 * Move this creature into a seat, or off the field with INDEX_NONE.
+	 * Raises OnEnteredField / OnLeftField when the seat actually changes.
+	 */
+	void SetBattleSeatIndex(int32 NewSeatIndex);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "The moves the Creature currently knows.", Category = "Creature | Core"))
 	TArray<TSubclassOf<AGF_SkillDefinition>> Skills;
 
@@ -475,6 +481,21 @@ public:
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Creature | Presentation")
 	void OnDamageTaken(float Amount, bool bWasCritical);
+
+	/**
+	 * Took a seat on the battlefield -- at the start of the fight, or coming
+	 * off the bench as a replacement or swap.
+	 *
+	 * The place to add a health bar. BeginPlay is too early and too broad: the
+	 * whole party is spawned for every battle, with the bench hidden, so
+	 * anything hung off BeginPlay also appears for creatures that never fight.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Creature | Battle")
+	void OnEnteredField(int32 SeatIndex);
+
+	/** Left its seat -- swapped out, or cleared after going down. Remove its health bar here. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Creature | Battle")
+	void OnLeftField();
 
 	/** Went down. Raised once, after HP has already reached zero. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Creature | Presentation")

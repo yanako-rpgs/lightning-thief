@@ -50,15 +50,26 @@ enum class EGF_Element : uint8
  * names match the stat names exactly:
  *   Physical -> Attack vs Defense
  *   Magic    -> Magic  vs Poise
- *   Status   -> no damage
+ *   Utility  -> no damage (stat changes, status, protect)
+ *   Healing  -> no damage (restores HP)
+ *
+ * Utility was called Status; DefaultEngine.ini carries the redirect for assets
+ * saved under the old name.
  */
 UENUM(BlueprintType)
 enum class EGF_SkillCategory : uint8
 {
 	Physical UMETA(DisplayName = "Physical"),
 	Magic    UMETA(DisplayName = "Magic"),
-	Status   UMETA(DisplayName = "Status"),
+	Utility  UMETA(DisplayName = "Utility"),
+	Healing  UMETA(DisplayName = "Healing"),
 };
+
+/** Physical and Magic run the damage formula; Utility and Healing never do. */
+FORCEINLINE bool GF_IsDamagingCategory(EGF_SkillCategory Category)
+{
+	return Category == EGF_SkillCategory::Physical || Category == EGF_SkillCategory::Magic;
+}
 
 /**
  * How many seats a skill reaches.

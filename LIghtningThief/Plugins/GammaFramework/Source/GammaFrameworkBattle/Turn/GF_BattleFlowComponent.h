@@ -26,7 +26,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGF_OnTurnBegin, const FGF_TurnConte
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGF_OnTurnEnd, const FGF_TurnContext&, Context, EGF_TurnResult, Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGF_OnCreatureDowned, FGF_BattleSlot, Slot, AGF_Creature*, Creature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGF_OnStepAwaitingAck, EGF_BattleStepKind, StepKind, int32, StepToken);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGF_OnReplacementNeeded, EGF_BattleSide, Side, const TArray<FGF_BattleSlot>&, EmptySlots);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FGF_OnCreatureSentOut, FGF_BattleSlot, Slot, AGF_Creature*, Incoming, AGF_Creature*, Outgoing);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGF_OnReplacementNeeded,EGF_BattleSide, Side, const TArray<FGF_BattleSlot>&, EmptySlots);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGF_OnBattleEnded, EGF_BattleOutcome, Outcome);
 
 /**
@@ -202,6 +203,14 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "GammaFramework | Battle | Events")
 	FGF_OnReplacementNeeded OnReplacementNeeded;
+
+	/**
+	 * A creature came off the bench into a seat -- a replacement, a swap, or a
+	 * forced send-out. Outgoing is whoever left that seat for the bench, or null
+	 * when the seat was empty. Hook a send-out animation or HUD refresh here.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "GammaFramework | Battle | Events")
+	FGF_OnCreatureSentOut OnCreatureSentOut;
 
 	/**
 	 * The flow has stopped and is waiting to be told the presentation finished.

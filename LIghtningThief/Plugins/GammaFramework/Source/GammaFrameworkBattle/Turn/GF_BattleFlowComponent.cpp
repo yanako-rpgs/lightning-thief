@@ -922,16 +922,28 @@ bool UGF_BattleFlowComponent::SendOutReserve(const FGF_BattleSlot& Slot, int32 R
 		return false;
 	}
 
+	OnCreatureSentOut.Broadcast(Slot, Bench[ReserveIndex], nullptr);
 	BroadcastTurnOrder();
 	return true;
 }
 
 bool UGF_BattleFlowComponent::ExecuteSwap(const FGF_BattleSlot& Slot, int32 ReserveIndex)
 {
-	if (Board == nullptr || !Board->SwapInReserve(Slot, ReserveIndex))
+	if (Board == nullptr)
 	{
 		return false;
 	}
+
+	AGF_Creature* Outgoing = Board->GetCreatureInSlot(Slot);
+	const TArray<AGF_Creature*> Bench = Board->GetReserves(Slot.Side);
+	AGF_Creature* Incoming = Bench.IsValidIndex(ReserveIndex) ? Bench[ReserveIndex] : nullptr;
+
+	if (!Board->SwapInReserve(Slot, ReserveIndex))
+	{
+		return false;
+	}
+
+	OnCreatureSentOut.Broadcast(Slot, Incoming, Outgoing);
 
 	// The arriving creature acts from next round, so its entry for this round --
 	// the Swap itself -- is already spent and nothing else needs cancelling.
@@ -961,7 +973,10 @@ void UGF_BattleFlowComponent::ForceFillEmptyLine(EGF_BattleSide Side)
 	{
 		if (Bench[i] != nullptr && !Bench[i]->IsDowned())
 		{
-			Board->SendOutToSlot(Empty[0], Bench[i]);
+			if (Board->SendOutToSlot(Empty[0], Bench[i]))
+			{
+				OnCreatureSentOut.Broadcast(Empty[0], Bench[i], nullptr);
+			}
 			GF_FLOWLOG("Forced send-out into %s: its side had nothing on the field.", *Empty[0].ToString());
 			return;
 		}
