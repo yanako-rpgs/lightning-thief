@@ -81,6 +81,18 @@ struct GAMMAFRAMEWORKBATTLE_API FGF_EncounterRequest
 	EGF_BattleAIDifficulty Difficulty = EGF_BattleAIDifficulty::Basic;
 
 	/**
+	 * How many creatures each side has on the field at once. 1 is a single
+	 * battle, 2 a double.
+	 *
+	 * Applies to both sides. Enemies past this count wait on the bench and come
+	 * in one at a time as the field empties, so a Tamer with three creatures in
+	 * a single battle sends them out in order rather than all together.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Encounter",
+	          meta = (ClampMin = "1", ClampMax = "4"))
+	int32 ActiveSeats = 1;
+
+	/**
 	 * Hold the arena open when the fight ends, rather than tearing it down.
 	 *
 	 * For a victory screen, a level-up sequence, spoils. Without it the camera
@@ -149,17 +161,6 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Battle")
 	bool bTakeInputDuringBattle = true;
-
-	/**
-	 * How many of the party stand on the field at once. The rest are the bench.
-	 *
-	 * Four, to match the board the turn engine builds. Fewer leaves empty seats
-	 * that auto-replace fills from the bench on the following round, so a battle
-	 * that starts as a 1v1 quietly becomes a 4v4 a round later.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Battle",
-	          meta = (ClampMin = "1", ClampMax = "4"))
-	int32 ActiveSeats = 4;
 
 	/**
 	 * Bring creatures onto the field one at a time rather than all at once.
@@ -296,6 +297,18 @@ private:
 	 * seeing it standing, and keeps paying it for kills it was not around for.
 	 */
 	UFUNCTION() void HandleCreatureDowned(FGF_BattleSlot Slot, AGF_Creature* Creature);
+
+	/**
+	 * A creature came off the bench into a seat. Moves it there and shows it,
+	 * and hides whoever it replaced.
+	 *
+	 * The bench waits hidden at the arena origin, so without this a replacement
+	 * fights from the middle of the arena where nobody can see it.
+	 */
+	UFUNCTION() void HandleCreatureSentOut(FGF_BattleSlot Slot, AGF_Creature* Incoming, AGF_Creature* Outgoing);
+
+	/** The encounter's seats per side, clamped to what the board supports. */
+	int32 GetSeatCount() const { return FMath::Clamp(PendingRequest.ActiveSeats, 1, 4); }
 
 	void BeginSendOut();
 	void SendOutNext();

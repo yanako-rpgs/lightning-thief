@@ -42,7 +42,7 @@ float UGF_BattleAILibrary::EstimateDamage(
 	}
 
 	const AGF_SkillDefinition* Skill = SkillClass.GetDefaultObject();
-	if (Skill == nullptr || Skill->Split == EGF_SkillCategory::Status || Skill->Power <= 0.0f)
+	if (Skill == nullptr || !GF_IsDamagingCategory(Skill->Split) || Skill->Power <= 0.0f)
 	{
 		return 0.0f;
 	}
@@ -173,7 +173,7 @@ TArray<FGF_AIScoredOption> UGF_BattleAILibrary::ScoreAllOptions(
 
 			Option.EstimatedDamage = EstimateDamage(Attacker, Defender, SkillClass, Weather);
 
-			if (Skill->Split == EGF_SkillCategory::Status)
+			if (!GF_IsDamagingCategory(Skill->Split))
 			{
 				// A status skill is worth something only if it lands something new.
 				// Doubling up a status is a wasted action, and a wasted action at

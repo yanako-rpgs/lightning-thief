@@ -889,7 +889,7 @@ FGF_SkillEvaluation AGF_TamerMaster::GetBestSkill(const FGF_CreatureInstanceData
             if (Eval.SkillClass)
             {
                 AGF_SkillDefinition* TempSkill = Eval.SkillClass.GetDefaultObject();
-                if (TempSkill && TempSkill->Split == EGF_SkillCategory::Status && TempSkill->Status != EGF_STATUSEffect::None)
+                if (TempSkill && !GF_IsDamagingCategory(TempSkill->Split) && TempSkill->Status != EGF_STATUSEffect::None)
                 {
                     if (FMath::FRand() < StatusSkillChance)
                     {
@@ -990,7 +990,7 @@ float AGF_TamerMaster::CalculateSkillScore(const FGF_CreatureInstanceData& Attac
     float Score = 0.0f;
 
     // Status moves get a flat score
-    if (SkillDefaults->Split == EGF_SkillCategory::Status)
+    if (!GF_IsDamagingCategory(SkillDefaults->Split))
     {
         // Higher score if opponent doesn't have a status
         if (Defender.StatusCondition == EGF_STATUSEffect::None && SkillDefaults->Status != EGF_STATUSEffect::None)

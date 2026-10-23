@@ -120,6 +120,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Battle|Harness")
 	bool bAutoReplace = true;
 
+	/**
+	 * Creatures per side on the field: 1 for a single battle, 2 for a double.
+	 *
+	 * Read when a battle starts. The Battle Launcher sets it from the encounter
+	 * request, so only set it yourself when calling StartWildBattle or
+	 * StartTamerBattle directly. Anything handed in past this goes to the bench.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Battle",
+	          meta = (ClampMin = "1", ClampMax = "4"))
+	int32 ActiveSeats = 1;
+
 	//==================================================================
 	// PRESENTATION
 	//
@@ -282,6 +293,17 @@ public:
 	          meta = (ClampMin = "0.0", UIMax = "2.0"))
 	float TurnStartDelay = 1.0f;
 
+	/**
+	 * How long a failed turn stays on screen before the round moves on, in
+	 * seconds -- "But it failed!", "flinched and couldn't move!" and the like.
+	 *
+	 * A failed move has no attack graph to fill the time, so without this the
+	 * next turn's announcement replaced the line on the frame it appeared.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GammaFramework|Battle|Presentation",
+	          meta = (ClampMin = "0.0", UIMax = "3.0"))
+	float FailedTurnHoldTime = 1.5f;
+
 	//==================================================================
 	// COMMAND MENU
 	//
@@ -350,6 +372,17 @@ public:
 	/** True when GetSelectableTargets would offer a real decision. */
 	UFUNCTION(BlueprintPure, Category = "GammaFramework|Battle|Menu")
 	bool NeedsTargetSelection(int32 SkillIndex) const;
+
+	/**
+	 * Type multiplier the commanding creature's skill would get against a target
+	 * -- for a "2x DMG" tag on the move menu. 0, 0.25, 0.5, 1, 2 or 4.
+	 *
+	 * 1 means show nothing: a neutral hit, a Utility or Healing skill, an empty
+	 * move slot, or no enemy to judge against. Leave TargetSlot unconnected to
+	 * judge against the first living enemy.
+	 */
+	UFUNCTION(BlueprintPure, Category = "GammaFramework|Battle|Menu")
+	float GetSkillEffectiveness(int32 SkillIndex, FGF_BattleSlot TargetSlot) const;
 
 	/**
 	 * Seats a claim can be spent on -- every enemy still standing.
@@ -688,6 +721,10 @@ private:
 	void PresentPendingTurn();
 
 	FTimerHandle TurnStartTimer;
+
+	// Holds a failed turn's message on screen for FailedTurnHoldTime.
+	FTimerHandle FailedTurnTimer;
+	void FinishFailedTurn();
 
 	UFUNCTION() void HandleAttackImpact(AGF_Skill* Skill);
 	UFUNCTION() void HandleAttackFinished(AGF_Skill* Skill);

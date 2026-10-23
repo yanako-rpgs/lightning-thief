@@ -11,6 +11,7 @@
 #include "GF_CreatureManagerSubsystem.h"
 #include "GF_Skill.h"
 #include "GF_SkillDefinition.h"
+#include "GF_BattleManagementFunctions.h"
 
 
 AGF_TurnBattleManager::AGF_TurnBattleManager()
@@ -31,6 +32,7 @@ void AGF_TurnBattleManager::EndPlay(const EEndPlayReason::Type Reason)
 	if (UWorld* W = GetWorld())
 	{
 		W->GetTimerManager().ClearTimer(TurnStartTimer);
+		W->GetTimerManager().ClearTimer(FailedTurnTimer);
 	}
 
 	if (Flow)
@@ -62,7 +64,7 @@ void AGF_TurnBattleManager::BindFlowEvents()
 
 void AGF_TurnBattleManager::ConfigureCommonAI(FGF_BattleStartConfig& Config)
 {
-	Config.MaxActiveSlots  = 4;
+	Config.MaxActiveSlots  = FMath::Clamp(ActiveSeats, 1, 4);
 	Config.StartingWeather = EGF_WeatherType::None;
 }
 
@@ -289,6 +291,29 @@ void AGF_TurnBattleManager::PresentPendingTurn()
 
 	const FGF_ActionResolution Plan = PeekPlan();
 
+	// A failed move has nothing to animate, and a Blueprint whose moves all
+	// perform through attack graphs may never answer OnTurnReadyToPresent --
+	// which stalled the whole battle. Close it here. OnActionResolved still
+	// fires with bFailed and FailMessage for the "But it failed!" line, which
+	// then gets FailedTurnHoldTime to be read before the next turn replaces it.
+	if (Plan.bFailed)
+	{
+		ApplyPlannedTurn();
+
+		UWorld* World = GetWorld();
+		if (World && FailedTurnHoldTime > 0.f)
+		{
+			World->GetTimerManager().SetTimer(
+				FailedTurnTimer, this, &AGF_TurnBattleManager::FinishFailedTurn,
+				FailedTurnHoldTime, /*bLoop*/ false);
+		}
+		else
+		{
+			FinishFailedTurn();
+		}
+		return;
+	}
+
 	// A skill that brought its own attack graph performs itself. Doing this
 	// here rather than in the Blueprint keeps the wiring -- collect targets,
 	// spawn, bind impact and finished -- out of a graph where it is fiddly to
@@ -305,6 +330,11 @@ void AGF_TurnBattleManager::PresentPendingTurn()
 	OnTurnReadyToPresent(Plan);
 }
 
+void AGF_TurnBattleManager::FinishFailedTurn()
+{
+	FinishTurnPresentation();
+}
+
 //======================================================================
 // Attack graphs
 //======================================================================
@@ -312,6 +342,12 @@ void AGF_TurnBattleManager::PresentPendingTurn()
 bool AGF_TurnBattleManager::TryPlayAttackGraph(const FGF_ActionResolution& Plan)
 {
 	if (!Plan.ActorCreature || !Plan.SkillClass) { return false; }
+
+	// A failed move has nothing to perform. The resolver bails before it fills
+	// Targets (first-turn-only after the first turn, recharge, no target), so
+	// the graph would run against an empty array and aim at nothing.
+	// PresentPendingTurn closes failed turns before getting here.
+	if (Plan.bFailed) { return false; }
 
 	// Only skills that actually implement OnPlayAttack can perform. Everything
 	// else -- the C++ test skills, and any move not converted yet -- falls
@@ -863,8 +899,11 @@ bool AGF_TurnBattleManager::AcknowledgePresentedStep(int32 Token)
 void AGF_TurnBattleManager::HandleReplacementNeeded(EGF_BattleSide Side,
                                                 const TArray<FGF_BattleSlot>& EmptySlots)
 {
-	// The enemy fills its own seats.
-	if (Side != EGF_BattleSide::Player || !bAutoReplace || !Flow) { return; }
+	if (!Flow) { return; }
+
+	// The enemy always refills, so a Tamer's next creature steps up as soon as
+	// one falls. The player's side waits on bAutoReplace or a menu.
+	if (Side == EGF_BattleSide::Player && !bAutoReplace) { return; }
 
 	// Send out the lowest reserve index that still takes. SendOutReserve
 	// refuses a downed or already-deployed creature, so walking the index
@@ -974,6 +1013,33 @@ bool AGF_TurnBattleManager::NeedsTargetSelection(int32 SkillIndex) const
 	// One living enemy is not a choice. Asking anyway costs the player a click
 	// on every turn of every 1v1 in the game.
 	return GetSelectableTargets(SkillIndex).Num() > 1;
+}
+
+float AGF_TurnBattleManager::GetSkillEffectiveness(int32 SkillIndex, FGF_BattleSlot TargetSlot) const
+{
+	const UGF_BattleBoard* Board = Flow ? Flow->GetBoard() : nullptr;
+	const AGF_Creature* Commander = GetCommandingCreature();
+	if (!Board || !Commander || !Commander->Skills.IsValidIndex(SkillIndex)) { return 1.0f; }
+
+	const TSubclassOf<AGF_SkillDefinition> SkillClass = Commander->Skills[SkillIndex];
+	const AGF_SkillDefinition* CDO = SkillClass ? SkillClass.GetDefaultObject() : nullptr;
+	if (!CDO || !GF_IsDamagingCategory(CDO->Split)) { return 1.0f; }
+
+	FGF_BattleSlot Target = TargetSlot;
+	if (!Target.IsValidSlot())
+	{
+		const TArray<FGF_BattleSlot> Opponents = Board->GetLivingOpponentsOf(GetCommandingSlot());
+		if (Opponents.Num() > 0)
+		{
+			Target = Opponents[0];
+		}
+	}
+
+	const AGF_Creature* Defender = Board->GetCreatureInSlot(Target);
+	if (!Defender) { return 1.0f; }
+
+	return BattleManagementFunctions::GetTypeEffectiveness(
+		CDO->Type, Defender->PrimaryElement, Defender->SecondaryElement);
 }
 
 bool AGF_TurnBattleManager::SubmitSkill(int32 SkillIndex, FGF_BattleSlot TargetSlot)

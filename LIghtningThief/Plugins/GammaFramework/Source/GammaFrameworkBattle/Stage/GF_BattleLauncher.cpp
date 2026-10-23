@@ -123,8 +123,25 @@ void UGF_BattleLauncher::StageArena()
 		return;
 	}
 
+	const int32 Seats = GetSeatCount();
+
 	// Creatures handed in explicitly are moved rather than respawned, so they
-	// keep whatever state the caller had already given them.
+	// keep whatever state the caller had already given them. More than the
+	// encounter has seats for and the extras join the front of the bench.
+	if (PendingPlayerActive.Num() > Seats)
+	{
+		for (int32 i = PendingPlayerActive.Num() - 1; i >= Seats; --i)
+		{
+			if (AGF_Creature* C = PendingPlayerActive[i])
+			{
+				C->SetActorLocation(Arena->GetActorLocation());
+				C->SetActorHiddenInGame(true);
+				PendingPlayerReserves.Insert(C, 0);
+			}
+			PendingPlayerActive.RemoveAt(i);
+		}
+	}
+
 	for (int32 i = 0; i < PendingPlayerActive.Num(); ++i)
 	{
 		if (AGF_Creature* C = PendingPlayerActive[i])
@@ -144,12 +161,18 @@ void UGF_BattleLauncher::StageArena()
 		Data.Initialize(Entry.Species, Entry.Level,
 		                TArray<TSubclassOf<AGF_SkillDefinition>>(), NAME_None, 0);
 
-		const FTransform Seat = Arena->GetSeatTransform(EGF_BattleSide::Enemy, i);
+		// Past the seat count is the enemy's bench: spawned now so a replacement
+		// has an actor to bring in, but hidden at the origin like the player's.
+		const bool bTakesASeat = Enemies.Num() < Seats;
+		const FTransform Seat = bTakesASeat
+			? Arena->GetSeatTransform(EGF_BattleSide::Enemy, Enemies.Num())
+			: FTransform(Arena->GetActorLocation());
 
 		if (AGF_Creature* Spawned = Creatures->SpawnCreatureFromData(
 				Data, Seat.GetLocation(), Seat.Rotator(),
 				/*bIsPlayer*/ false, /*bIsWild*/ PendingRequest.bIsWild))
 		{
+			if (!bTakesASeat) { Spawned->SetActorHiddenInGame(true); }
 			Enemies.Add(Spawned);
 			SpawnedCreatures.Add(Spawned);
 		}
@@ -203,7 +226,11 @@ void UGF_BattleLauncher::BeginSendOut()
 	// Enemies first, then the player's line: a wild creature should be on the
 	// field to be answered rather than arriving alongside the answer.
 	SendOutQueue.Reset();
-	for (AGF_Creature* E : StagedEnemies)       { if (E) { SendOutQueue.Add(E); } }
+	// Only the seated enemies. The rest are bench and arrive as replacements.
+	for (int32 i = 0; i < StagedEnemies.Num() && i < GetSeatCount(); ++i)
+	{
+		if (AGF_Creature* E = StagedEnemies[i]) { SendOutQueue.Add(E); }
+	}
 	for (AGF_Creature* P : PendingPlayerActive) { if (P) { SendOutQueue.Add(P); } }
 
 	// Hidden until each one's turn to arrive. The event that reveals them is
@@ -296,7 +323,12 @@ bool UGF_BattleLauncher::StartTheFight()
 	if (UGF_BattleFlowComponent* Flow = Manager->GetFlow())
 	{
 		Flow->OnCreatureDowned.AddUniqueDynamic(this, &UGF_BattleLauncher::HandleCreatureDowned);
+		Flow->OnCreatureSentOut.AddUniqueDynamic(this, &UGF_BattleLauncher::HandleCreatureSentOut);
 	}
+
+	// The board is built this wide. Enemies past it are benched by the board
+	// itself, so the whole list can go in as the active line.
+	Manager->ActiveSeats = GetSeatCount();
 
 	// Carried across before the fight starts, so a claim on the very first round
 	// already knows whether this encounter ends on it. OR rather than assign: a
@@ -357,6 +389,23 @@ void UGF_BattleLauncher::HandleCreatureDowned(FGF_BattleSlot Slot, AGF_Creature*
 	Creatures->UpdatePartyFromActor(Creature, SpawnedPartyIndices[Spawned]);
 }
 
+void UGF_BattleLauncher::HandleCreatureSentOut(FGF_BattleSlot Slot, AGF_Creature* Incoming, AGF_Creature* Outgoing)
+{
+	if (!Arena) { return; }
+
+	if (Outgoing && Outgoing != Incoming)
+	{
+		Outgoing->SetActorLocation(Arena->GetActorLocation());
+		Outgoing->SetActorHiddenInGame(true);
+	}
+
+	if (Incoming)
+	{
+		Incoming->SetActorTransform(Arena->GetSeatTransform(Slot.Side, Slot.Index));
+		Incoming->SetActorHiddenInGame(false);
+	}
+}
+
 TArray<int32> UGF_BattleLauncher::GetBattlerPartyIndices() const
 {
 	TArray<int32> Indices;
@@ -408,7 +457,7 @@ bool UGF_BattleLauncher::GatherPartyForBattle()
 	if (!Creatures || !Arena) { return false; }
 
 	const int32 PartySize = Creatures->GetPartySize();
-	const int32 Seats = FMath::Clamp(ActiveSeats, 1, 4);
+	const int32 Seats = GetSeatCount();
 
 	for (int32 PartyIndex = 0; PartyIndex < PartySize; ++PartyIndex)
 	{

@@ -733,8 +733,8 @@ FGF_BattleDamageResult UGF_BattleComponent::CalculateDamageWithoutSpawning(
         return Result;
     }
 
-    // Status moves deal no damage — skip all damage calculation entirely
-    if (Skill->Split == EGF_SkillCategory::Status)
+    // Utility and Healing moves deal no damage — skip all damage calculation entirely
+    if (!GF_IsDamagingCategory(Skill->Split))
     {
         Result.Damage = 0.f;
         Result.DamageMessage = TEXT("");
