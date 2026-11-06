@@ -655,8 +655,9 @@ bool CanLearnMoreSkills() const { return Skills.Num() < GetSkillSlotCount(); }
 	void RollAPs(EAPRoll Roll);
 
 	/**
-	 * Add AP points to one random stat that is not yet at MaxAP (or, for a
-	 * negative Delta, take them from one random stat that is above 0). Affinity
+	 * Add AP points one at a time, each to a random stat that is not yet at
+	 * MaxAP (or, for a negative Delta, take them all from one random stat that
+	 * is above 0). Affinity
 	 * is the AP total as a percentage of the most it can be, so it moves with it.
 	 *
 	 * Changes stats: call UGF_CreatureManagerSubsystem::RecalculateStats after.

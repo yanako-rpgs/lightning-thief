@@ -319,7 +319,36 @@ void FGF_CreatureInstanceData::RollAPs(EAPRoll Roll)
 
 void FGF_CreatureInstanceData::AddAffinity(int32 Delta)
 {
-	// Only the stats that can still move in this direction are candidates.
+	// Gains are dealt one point at a time, each to a random stat still under
+	// MaxAP, so a +4 can land in up to four stats and none of it is lost to a
+	// stat that fills up partway.
+	if (Delta > 0)
+	{
+		for (; Delta > 0; --Delta)
+		{
+			TArray<int32*, TInlineAllocator<6>> Open;
+			for (const EGF_CreatureStat Stat : AllStats)
+			{
+				int32* AP = StatField(*this, Stat, true);
+				if (*AP < MaxAP)
+				{
+					Open.Add(AP);
+				}
+			}
+
+			if (Open.Num() == 0)
+			{
+				break;
+			}
+
+			++*Open[FMath::RandRange(0, Open.Num() - 1)];
+		}
+
+		RefreshAffinity();
+		return;
+	}
+
+	// Losses (Void Berry) come out of one random stat that is above 0.
 	TArray<int32*, TInlineAllocator<6>> Open;
 	for (const EGF_CreatureStat Stat : AllStats)
 	{

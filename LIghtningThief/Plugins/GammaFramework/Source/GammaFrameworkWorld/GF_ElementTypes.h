@@ -100,6 +100,43 @@ enum class EGF_SkillTargetShape : uint8
 	Everyone   UMETA(DisplayName = "Everyone"),
 };
 
+/**
+ * Every attacking element sorted by how hard it hits one typing.
+ *
+ * Built for the party summary's Matchups page: each array is one band on that
+ * page, already in element order, so the widget just fills a box per array and
+ * hides the empty ones. Quadruple and Quarter only ever fill for dual types.
+ */
+USTRUCT(BlueprintType)
+struct GAMMAFRAMEWORKWORLD_API FGF_DefensiveMatchups
+{
+	GENERATED_BODY()
+
+	/** x4 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Quadruple;
+
+	/** x2 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Double;
+
+	/** x1 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Neutral;
+
+	/** x0.5 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Half;
+
+	/** x0.25 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Quarter;
+
+	/** x0 */
+	UPROPERTY(BlueprintReadOnly, Category = "Gamma Framework|Elements")
+	TArray<EGF_Element> Immune;
+};
+
 UCLASS()
 class GAMMAFRAMEWORKWORLD_API UGF_ElementLibrary : public UBlueprintFunctionLibrary
 {
@@ -116,6 +153,15 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Gamma Framework|Elements")
 	static float GetEffectiveness(EGF_Element Attacking, EGF_Element Defending1, EGF_Element Defending2);
+
+	/**
+	 * Runs every attacking element against this typing and buckets it by
+	 * multiplier. Pass EGF_Element::None as Defending2 for a single element.
+	 * Reads the live chart, so it never goes stale the way the species asset's
+	 * Weaknesses/Resistances arrays can.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Gamma Framework|Elements")
+	static FGF_DefensiveMatchups GetDefensiveMatchups(EGF_Element Defending1, EGF_Element Defending2);
 
 	UFUNCTION(BlueprintPure, Category = "Gamma Framework|Elements")
 	static FText GetElementDisplayName(EGF_Element Element);

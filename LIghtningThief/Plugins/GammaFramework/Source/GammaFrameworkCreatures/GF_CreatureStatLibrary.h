@@ -15,7 +15,7 @@
  * Stats are calculated from:
  * - Base Stats (from species)
  * - APs (rolled at birth, grow with affinity, max 50)
- * - EPs (1 per level, freely allocated; each EP counts like one AP)
+ * - EPs (1 point per level, freely allocated; a point is 5 EP, and the formula takes floor(EP / 4))
  * - Level
  * - Temperament modifiers
  */
@@ -73,8 +73,8 @@ public:
     );
 
     // --------------------------------------------------------
-    // APs / EPs / AFFINITY (read-only helpers for the info screen;
-    // change them through UGF_CreatureManagerSubsystem)
+    // APs / EPs / AFFINITY (helpers for the info screen; AllocateCreatureEP
+    // only edits a copy -- save changes through UGF_CreatureManagerSubsystem)
     // --------------------------------------------------------
 
     UFUNCTION(BlueprintPure, Category = "Creature|Stats")
@@ -89,6 +89,20 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Creature|Stats")
     static int32 GetUnspentEP(const FGF_CreatureInstanceData& CreatureData) { return CreatureData.GetUnspentEP(); }
+
+    /** Most EP points one stat can hold (40 points = 200 EP on the stat screen). */
+    UFUNCTION(BlueprintPure, Category = "Creature|Stats")
+    static int32 GetMaxEPPerStat() { return FGF_CreatureInstanceData::MaxEPPerStat; }
+
+    /**
+     * Move EP points into (positive Delta) or out of (negative) one stat of a
+     * working copy, with the same clamping as UGF_CreatureManagerSubsystem::AllocatePartyEP.
+     * Does not recalculate or save -- for previewing on the stat screen; commit
+     * through AllocatePartyEP when the player confirms.
+     * @return how many points actually moved, signed like Delta.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Creature|Stats")
+    static int32 AllocateCreatureEP(UPARAM(ref) FGF_CreatureInstanceData& CreatureData, EGF_CreatureStat Stat, int32 Delta) { return CreatureData.AllocateEP(Stat, Delta); }
 
     /** True at max affinity -- show the heart on the first info page. */
     UFUNCTION(BlueprintPure, Category = "Creature|Stats")

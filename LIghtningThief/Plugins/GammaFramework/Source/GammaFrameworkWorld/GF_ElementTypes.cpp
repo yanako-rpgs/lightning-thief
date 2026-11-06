@@ -121,6 +121,28 @@ float UGF_ElementLibrary::GetEffectiveness(EGF_Element Attacking, EGF_Element De
 	return First * GetMatchup(Attacking, Defending2);
 }
 
+FGF_DefensiveMatchups UGF_ElementLibrary::GetDefensiveMatchups(EGF_Element Defending1, EGF_Element Defending2)
+{
+	FGF_DefensiveMatchups Result;
+
+	// Enum order, so every band lists its elements the same way.
+	for (uint8 Raw = static_cast<uint8>(EGF_Element::None) + 1; Raw < static_cast<uint8>(EGF_Element::MAX); ++Raw)
+	{
+		const EGF_Element Attacking = static_cast<EGF_Element>(Raw);
+		const float Mult = GetEffectiveness(Attacking, Defending1, Defending2);
+
+		// Chart cells are exact powers of two, so these compare cleanly; the
+		// thresholds just keep a stray float from falling through.
+		if (Mult <= 0.0f)        { Result.Immune.Add(Attacking); }
+		else if (Mult >= 3.0f)   { Result.Quadruple.Add(Attacking); }
+		else if (Mult >= 1.5f)   { Result.Double.Add(Attacking); }
+		else if (Mult > 0.75f)   { Result.Neutral.Add(Attacking); }
+		else if (Mult > 0.375f)  { Result.Half.Add(Attacking); }
+		else                     { Result.Quarter.Add(Attacking); }
+	}
+	return Result;
+}
+
 FText UGF_ElementLibrary::GetElementDisplayName(EGF_Element Element)
 {
 	// Deliberately not UEnum::GetDisplayNameTextByValue: UMETA(DisplayName) is

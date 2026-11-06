@@ -3732,7 +3732,8 @@ bool UGF_CreatureManagerSubsystem::GiveEXP(int32 PartyIndex, int32 ExpAmount, bo
 
 		float OldMaxHPBeforeCalc = Data.MaxHP;
 
-		Data.MaxHP = FMath::FloorToInt(((2.0f * Species->BaseStats.HP + Data.HP_AP + Data.HP_EP) * Data.Level / 100.0f) + Data.Level + 10);
+		// HP_EP is stored as points; GetEPStatBonus turns them into floor(EP / 4).
+		Data.MaxHP = FMath::FloorToInt(((2.0f * Species->BaseStats.HP + Data.HP_AP + FGF_CreatureInstanceData::GetEPStatBonus(Data.HP_EP)) * Data.Level / 100.0f) + Data.Level + 10);
 
 		// Husk: see UGF_CreatureSpeciesData::HasFixedOneHP.
 		if (Species->HasFixedOneHP())
@@ -6032,7 +6033,7 @@ int32 UGF_CreatureManagerSubsystem::ApplyVitaminItem(UGF_ItemData* Item, FGF_Cre
 			const float OldMaxHP = Creature.MaxHP;
 
 			Creature.MaxHP = FMath::FloorToInt(
-				((2.0f * Species->BaseStats.HP + Creature.HP_AP + Creature.HP_EP) * Creature.Level) / 100.0f
+				((2.0f * Species->BaseStats.HP + Creature.HP_AP + FGF_CreatureInstanceData::GetEPStatBonus(Creature.HP_EP)) * Creature.Level) / 100.0f
 			) + Creature.Level + 10;
 
 			// Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. HP Up still banks the EP
@@ -6360,6 +6361,14 @@ bool UGF_CreatureManagerSubsystem::AttemptCatch(
 		// Copy wild Creature data
 		OutCaughtCreature = WildCreature;
 		OutCaughtCreature.CaughtCoreName = CoreName;
+
+		// A caught creature trades its wild APs (2-22 a stat) for an owned roll:
+		// 20-50 points spread at random, and arrives with every EP point its level
+		// has earned unspent for the player to place. MaxHP moves with both, so
+		// recalculate.
+		OutCaughtCreature.RollAPs(FGF_CreatureInstanceData::EAPRoll::Owned);
+		OutCaughtCreature.ResetEPs();
+		RecalculateStats(OutCaughtCreature);
 
 		UE_LOG(LogTemp, Warning, TEXT("AttemptCatch: Set CaughtCoreName to '%s'"),
         *OutCaughtCreature.CaughtCoreName.ToString());
@@ -7522,9 +7531,10 @@ void UGF_CreatureManagerSubsystem::RecalculateStats(FGF_CreatureInstanceData& Cr
     const FGF_CreatureBaseStats& BaseStats = SpeciesData->BaseStats;
 
     // Calculate HP using Creature formula
-    // HP = floor(((2 * Base + AP + EP) * Level) / 100) + Level + 10
+    // HP = floor(((2 * Base + AP + floor(EP / 4)) * Level) / 100) + Level + 10
+    // HP_EP is stored as points; GetEPStatBonus turns them into floor(EP / 4).
     int32 HPStat = FMath::FloorToInt(
-        ((2 * BaseStats.HP + Creature.HP_AP + Creature.HP_EP) * Creature.Level) / 100.0f
+        ((2 * BaseStats.HP + Creature.HP_AP + FGF_CreatureInstanceData::GetEPStatBonus(Creature.HP_EP)) * Creature.Level) / 100.0f
     ) + Creature.Level + 10;
 
     // Husk: see UGF_CreatureSpeciesData::HasFixedOneHP. Every caller of this function
